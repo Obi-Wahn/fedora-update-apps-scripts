@@ -68,7 +68,7 @@ chmod +x update_fastfetch.sh
 
 * **Betriebssystem:** Fedora Linux (oder kompatible RHEL-Derivate)
 * **Architektur:** x86_64 oder aarch64
-* **Abhängigkeiten:** `bash`, `curl`, `dnf`, `rpm`, `python3`, `coreutils` (u.a. `sort -V` für den Downgrade-Schutz) (je nach Skript zusätzlich `awk`, `grep`, `sed`; `update_generalsx.sh` benötigt statt `dnf`/`rpm` zusätzlich `flatpak`)
+* **Abhängigkeiten:** `bash`, `curl`, `dnf`, `rpm`, `python3`, `coreutils` (u.a. `sort -V` für den Downgrade-Schutz) (je nach Skript zusätzlich `awk`, `grep`, `sed`; `update_generalsx.sh` und `update_talk_desktop.sh` benötigen statt `dnf`/`rpm` zusätzlich `flatpak`, aktuell nur für x86_64 verfügbar)
 
 ## Hinweis zur Entwicklung (KI-Transparenz)
 
