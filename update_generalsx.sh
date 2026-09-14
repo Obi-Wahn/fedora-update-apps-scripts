@@ -102,10 +102,11 @@ for APP in "${APPS[@]}"; do
     clear_download_trap
 
     # flatpak install prüft die Bundle-Integrität und installiert/aktualisiert in
-    # einem Schritt; --user vermeidet sudo, --or-update erlaubt ein stilles Update
-    # einer bereits vorhandenen Installation, -y unterdrückt Rückfragen.
-    echo "⚙️ Installiere $DISPLAY_NAME ($APP_ID) via flatpak (Nutzer-Installation, kein sudo nötig)..."
-    if ! flatpak install --user --or-update -y "$TARGET_FILE"; then
+    # einem Schritt; --system installiert für alle Nutzer des Rechners (erfordert
+    # sudo), --or-update erlaubt ein stilles Update einer bereits vorhandenen
+    # Installation, -y unterdrückt Rückfragen.
+    echo "⚙️ Installiere $DISPLAY_NAME ($APP_ID) via flatpak (System-Installation, fordert evtl. sudo an)..."
+    if ! sudo flatpak install --system --or-update -y "$TARGET_FILE"; then
         echo "❌ Fehler: flatpak install für $DISPLAY_NAME fehlgeschlagen." >&2
         continue
     fi

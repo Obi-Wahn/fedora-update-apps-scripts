@@ -23,7 +23,7 @@ Für Moonfin liegt zusätzlich eine Einrichtungsanleitung bei: [`Anleitung_Moonf
 
 GeneralsX veröffentlicht für Linux keine `.rpm`-Pakete, sondern `.flatpak`-Bundle-Dateien (aktuell nur für x86_64). `update_generalsx.sh` weicht deshalb vom gemeinsamen Muster ab:
 
-* Installation/Update läuft über `flatpak install --user --or-update`, nicht über `dnf`/`sudo`.
+* Installation/Update läuft über `sudo flatpak install --system --or-update`, nicht über `dnf`. Die Installation ist damit system-weit für alle Nutzer des Rechners verfügbar (und benötigt entsprechend `sudo`, genau wie die `dnf install`-Schritte der anderen Skripte).
 * Da die Bundle-Dateinamen keine Versionsnummer enthalten und `flatpak info` keine verlässliche Rückfrage auf die GitHub-Release-Version erlaubt, merkt sich das Skript das zuletzt installierte Release-Tag in einer einfachen Marker-Datei (`.generalsx-installed-version` / `.generalsxzh-installed-version`) statt es wie bei den RPM-Skripten live abzufragen.
 * GeneralsX nutzt kein Semver-Schema (z.B. `GeneralsX-Beta-19`), daher greift hier `validate_identifier()` (loser Format-Check) statt der strikten `validate_version()`.
 
