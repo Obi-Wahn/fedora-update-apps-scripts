@@ -107,9 +107,9 @@ fetch_text() {
     curl --connect-timeout 10 --max-time 30 -fsSL "$1"
 }
 
-# Lädt ein RPM-Paket mit Timeout- und Retry-Schutz herunter. Bei Fehlschlag wird
-# eine unvollständige Datei entfernt.
-download_rpm() {
+# Lädt eine beliebige Datei mit Timeout- und Retry-Schutz herunter (RPM-Pakete,
+# Flatpak-Bundles, ...). Bei Fehlschlag wird eine unvollständige Datei entfernt.
+download_file() {
     local url="$1"
     local target="$2"
     if ! curl --connect-timeout 10 --max-time 120 -fL -# --retry 3 -o "$target" "$url"; then
@@ -117,6 +117,11 @@ download_rpm() {
         rm -f "$target"
         return 1
     fi
+}
+
+# Beibehalten als sprechender Name für die RPM-Skripte; identisch zu download_file.
+download_rpm() {
+    download_file "$@"
 }
 
 # Prüft die RPM-Struktur einer heruntergeladenen Datei; entfernt sie bei Beschädigung.
@@ -130,13 +135,49 @@ verify_rpm() {
     fi
 }
 
-# Entfernt alte RPM-Dateien eines Programms im Zielverzeichnis, mit Ausnahme der
-# gerade installierten Version.
-cleanup_old_rpms() {
+# Entfernt alte Dateien eines Programms (RPM, Flatpak-Bundle, ...) im
+# Zielverzeichnis, mit Ausnahme der gerade installierten Version.
+cleanup_old_files() {
     local dest_dir="$1"
     local name_pattern="$2"
     local keep_basename="$3"
     find "$dest_dir" -maxdepth 1 -name "$name_pattern" ! -name "$keep_basename" -delete
+}
+
+# Beibehalten als sprechender Name für die RPM-Skripte; identisch zu cleanup_old_files.
+cleanup_old_rpms() {
+    cleanup_old_files "$@"
+}
+
+# Prüft ein Versions-/Release-Tag auf ein sicheres, dateinamentaugliches Format
+# (nur Buchstaben, Ziffern, Punkt, Bindestrich, Unterstrich), bevor es in
+# Dateinamen oder Marker-Dateien verwendet wird. Anders als validate_version()
+# erzwingt dies KEIN X.Y.Z-Schema - für Projekte mit freien Tag-Namen wie
+# "GeneralsX-Beta-19", bei denen der Anbieter kein Semver nutzt.
+validate_identifier() {
+    local identifier="$1"
+    if [[ ! "$identifier" =~ ^[A-Za-z0-9._-]+$ ]]; then
+        echo "❌ Fehler: Das abgerufene Release-Tag '$identifier' hat ein unerwartetes Format." >&2
+        return 1
+    fi
+}
+
+# Liest die zuletzt erfolgreich installierte Versions-/Release-Kennung aus einer
+# einfachen Marker-Datei. Gibt eine leere Zeile aus, wenn die Datei fehlt. Gedacht
+# für Formate wie Flatpak, bei denen es keine rpm -q-Entsprechung gibt, um die
+# installierte Version zuverlässig abzufragen.
+read_installed_marker() {
+    local marker_file="$1"
+    if [ -f "$marker_file" ]; then
+        cat "$marker_file"
+    fi
+}
+
+# Schreibt die aktuell installierte Versions-/Release-Kennung in die Marker-Datei.
+write_installed_marker() {
+    local marker_file="$1"
+    local identifier="$2"
+    printf '%s\n' "$identifier" > "$marker_file"
 }
 
 # Stellt sicher, dass für die aktuell installierte (= aktuelle) Version eine lokale
