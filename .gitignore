@@ -2,5 +2,5 @@
 *.rpm
 *.flatpak
 
-# Marker-Dateien von update_generalsx.sh (zuletzt installiertes Release-Tag)
-.generalsx*-installed-version
+# Marker-Dateien der Flatpak-Skripte (zuletzt installierte Version/Release-Tag)
+.*-installed-version
