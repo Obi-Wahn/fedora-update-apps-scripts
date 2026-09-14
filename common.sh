@@ -224,3 +224,31 @@ clear_download_trap() {
     trap - INT TERM
     _DOWNLOAD_CLEANUP_TARGET=""
 }
+
+# Prüft, ob eine Flatpak-App im System-Scope installiert ist. Nutzt bewusst
+# sudo schon für die reine Abfrage: Auf manchen Systemen liefert
+# "flatpak info --system" ohne erhöhte Rechte fälschlich "nicht gefunden",
+# obwohl die App installiert ist (z.B. wenn /var/lib/flatpak nicht für alle
+# Nutzer lesbar ist), was sonst zu unnötigen Neuinstallationsversuchen führt.
+flatpak_is_installed() {
+    local app_id="$1"
+    sudo flatpak info --system "$app_id" >/dev/null 2>&1
+}
+
+# Installiert/aktualisiert ein Flatpak-Bundle system-weit. Schlägt der
+# eigentliche Install-Befehl fehl, aber die App ist laut flatpak_is_installed()
+# trotzdem vorhanden (z.B. weil flatpak das erneute Installieren exakt derselben
+# bereits installierten Version/Commit als Fehler statt als No-Op behandelt),
+# wird das als Erfolg gewertet.
+flatpak_install_bundle() {
+    local target="$1"
+    local app_id="$2"
+    if sudo flatpak install --system --or-update -y "$target"; then
+        return 0
+    fi
+    if flatpak_is_installed "$app_id"; then
+        echo "ℹ️ flatpak meldete einen Fehler, die App ist aber bereits in der aktuellen Version installiert."
+        return 0
+    fi
+    return 1
+}

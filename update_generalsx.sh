@@ -71,7 +71,7 @@ echo "🌐 Neuestes verfügbares Release:  $TAG"
 # Deinstallation durch den Nutzer. Deshalb zusätzlich bei flatpak nachfragen,
 # ob die App im System-Scope tatsächlich noch installiert ist.
 IS_INSTALLED=false
-if flatpak info --system "$APP_ID" >/dev/null 2>&1; then
+if flatpak_is_installed "$APP_ID"; then
     IS_INSTALLED=true
 fi
 
@@ -110,7 +110,7 @@ clear_download_trap
 # sudo), --or-update erlaubt ein stilles Update einer bereits vorhandenen
 # Installation, -y unterdrückt Rückfragen.
 echo "⚙️ Installiere GeneralsX (Zero Hour) ($APP_ID) via flatpak (System-Installation, fordert evtl. sudo an)..."
-if ! sudo flatpak install --system --or-update -y "$TARGET_FILE"; then
+if ! flatpak_install_bundle "$TARGET_FILE" "$APP_ID"; then
     echo "❌ Fehler: flatpak install fehlgeschlagen." >&2
     exit 1
 fi
