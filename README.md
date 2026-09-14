@@ -13,7 +13,7 @@ Eine Sammlung von Bash-Skripten, die Anwendungen unter Fedora Linux aktuell halt
 | `update_linwood-apps.sh` | [Linwood Butterfly](https://github.com/LinwoodDev/butterfly) & [Linwood Flow](https://github.com/LinwoodDev/Flow) über die GitHub-Releases |
 | `update_moonfin.sh` | [Moonfin](https://github.com/Moonfin-Client/Moonfin-Core) über die GitHub-Releases |
 | `update_OpenLogi.sh` | [OpenLogi](https://github.com/AprilNEA/OpenLogi) über die GitHub-Releases |
-| `update_generalsx.sh` | [GeneralsX](https://github.com/fbraz3/GeneralsX) (Generals & Zero Hour) über die GitHub-Releases — **Sonderfall:** nutzt `flatpak` statt `dnf`/`rpm`, siehe Hinweis unten |
+| `update_generalsx.sh` | [GeneralsX](https://github.com/fbraz3/GeneralsX) (nur Zero Hour) über die GitHub-Releases — **Sonderfall:** nutzt `flatpak` statt `dnf`/`rpm`, siehe Hinweis unten |
 
 Alle Skripte liegen direkt im Wurzelverzeichnis und binden [`common.sh`](./common.sh) ein, das gemeinsam genutzte Funktionen bereitstellt (siehe unten). `common.sh` ist keine eigenständige Updater; sie wird nur per `source` eingebunden und muss nicht ausführbar sein oder manuell gestartet werden.
 
@@ -21,10 +21,10 @@ Für Moonfin liegt zusätzlich eine Einrichtungsanleitung bei: [`Anleitung_Moonf
 
 ### Sonderfall GeneralsX (Flatpak statt RPM)
 
-GeneralsX veröffentlicht für Linux keine `.rpm`-Pakete, sondern `.flatpak`-Bundle-Dateien (aktuell nur für x86_64). `update_generalsx.sh` weicht deshalb vom gemeinsamen Muster ab:
+GeneralsX veröffentlicht für Linux keine `.rpm`-Pakete, sondern `.flatpak`-Bundle-Dateien (aktuell nur für x86_64), getrennt für die Basisversion (Generals) und Zero Hour. `update_generalsx.sh` installiert bewusst **nur Zero Hour** (`com.fbraz3.GeneralsXZH`) und weicht auch sonst vom gemeinsamen Muster ab:
 
 * Installation/Update läuft über `sudo flatpak install --system --or-update`, nicht über `dnf`. Die Installation ist damit system-weit für alle Nutzer des Rechners verfügbar (und benötigt entsprechend `sudo`, genau wie die `dnf install`-Schritte der anderen Skripte).
-* Da die Bundle-Dateinamen keine Versionsnummer enthalten und `flatpak info` keine verlässliche Rückfrage auf die GitHub-Release-Version erlaubt, merkt sich das Skript das zuletzt installierte Release-Tag in einer einfachen Marker-Datei (`.generalsx-installed-version` / `.generalsxzh-installed-version`) statt es wie bei den RPM-Skripten live abzufragen.
+* Da die Bundle-Dateinamen keine Versionsnummer enthalten, merkt sich das Skript das zuletzt installierte Release-Tag zusätzlich in einer einfachen Marker-Datei (`.generalsxzh-installed-version`). Die Marker-Datei allein reicht aber nicht aus, um eine manuelle Deinstallation zu erkennen — deshalb fragt das Skript vor jedem Lauf zusätzlich per `flatpak info --system` nach, ob die App tatsächlich noch installiert ist, und installiert bei Bedarf neu, selbst wenn der Marker bereits die aktuelle Version zeigt.
 * GeneralsX nutzt kein Semver-Schema (z.B. `GeneralsX-Beta-19`), daher greift hier `validate_identifier()` (loser Format-Check) statt der strikten `validate_version()`.
 
 ## Gemeinsame Funktionsweise

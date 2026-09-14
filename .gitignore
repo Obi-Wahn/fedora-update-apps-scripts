@@ -1,2 +1,6 @@
-# Von den update_*.sh-Skripten heruntergeladene RPM-Pakete
+# Von den update_*.sh-Skripten heruntergeladene Pakete
 *.rpm
+*.flatpak
+
+# Marker-Dateien von update_generalsx.sh (zuletzt installiertes Release-Tag)
+.generalsx*-installed-version
