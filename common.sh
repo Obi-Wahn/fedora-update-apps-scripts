@@ -30,7 +30,9 @@ detect_arch() {
 }
 
 # Prüft, ob eine Versionsnummer ein plausibles Format hat (X.Y.Z, optional mit Suffix
-# wie "-rc1" oder "~beta2"), bevor sie in Dateinamen oder URLs verwendet wird.
+# wie "-rc1" oder "-beta.6"), bevor sie in Dateinamen oder URLs verwendet wird.
+# Eine Tilde ist bewusst nicht erlaubt - lokale rpm-Versionen mit "~" werden vorher
+# per normalize_version() umgewandelt, geprüft werden nur die abgerufenen Tags.
 validate_version() {
     local version="$1"
     if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([a-zA-Z0-9.-]+)?$ ]]; then
@@ -251,4 +253,99 @@ flatpak_install_bundle() {
         return 0
     fi
     return 1
+}
+
+# Fragt /releases/latest eines GitHub-Repos ab (schließt Prereleases aus) und
+# sucht darin ein Asset mit exakt diesem Dateinamen. Gibt "tag|download_url" aus;
+# das Tag wird unverändert zurückgegeben (ein evtl. "v"-Präfix entfernt der Aufrufer).
+# Nutzung: find_github_latest_asset "<org>/<repo>" "<Asset-Dateiname>"
+find_github_latest_asset() {
+    local repo="$1"
+    local asset_name="$2"
+    python3 -c '
+import urllib.request, json, sys
+try:
+    req = urllib.request.urlopen(f"https://api.github.com/repos/{sys.argv[1]}/releases/latest", timeout=15)
+    data = json.loads(req.read().decode())
+    tag = data.get("tag_name", "")
+    url = ""
+    for asset in data.get("assets", []):
+        if asset.get("name") == sys.argv[2]:
+            url = asset.get("browser_download_url", "")
+            break
+    if not tag or not url:
+        print("Erwartetes Asset nicht in der neuesten Release gefunden", file=sys.stderr)
+        sys.exit(1)
+    print(f"{tag}|{url}")
+except Exception as e:
+    print(f"{type(e).__name__}: {e}", file=sys.stderr)
+    sys.exit(1)
+' "$repo" "$asset_name"
+}
+
+# Gemeinsamer Ablauf der Flatpak-Updater: Abgleich von Marker-Datei und echter
+# Installation, lokale Bundle-Sicherung, Download, System-Installation, Marker
+# schreiben. Gibt bei Fehlschlag 1 zurück (Aufrufer: "... || exit 1").
+# Die Marker-Datei allein erkennt keine manuelle Deinstallation, daher wird
+# zusätzlich flatpak_is_installed() abgefragt. Da der Bundle-Dateiname keine
+# Versionsnummer enthält, wird er bei jedem Update überschrieben - es gibt also
+# keine alten Bundle-Dateien aufzuräumen.
+# Nutzung: flatpak_update_app <Anzeigename> <App-ID> <Bundle-Datei> <Marker-Datei> <Version> <Download-URL>
+flatpak_update_app() {
+    local name="$1"
+    local app_id="$2"
+    local target="$3"
+    local marker="$4"
+    local version="$5"
+    local url="$6"
+
+    local installed_version
+    installed_version=$(read_installed_marker "$marker")
+    echo "📦 Zuletzt installierte Version: ${installed_version:-nicht installiert}"
+    echo "🌐 Neueste verfügbare Version:  $version"
+
+    local is_installed=false
+    if flatpak_is_installed "$app_id"; then
+        is_installed=true
+    fi
+
+    if [ "$installed_version" == "$version" ] && [ "$is_installed" == "true" ]; then
+        echo "✅ $name ist bereits aktuell ($version)."
+        # Auch ohne anstehendes Update immer eine lokale Bundle-Kopie sicherstellen
+        if [ ! -f "$target" ]; then
+            echo "📦 Keine lokale Flatpak-Sicherung gefunden, lade sie zusätzlich herunter: $target"
+            trap_download_cleanup "$target"
+            if ! download_file "$url" "$target"; then
+                echo "⚠️ Warnung: Backup-Download fehlgeschlagen." >&2
+            fi
+            clear_download_trap
+        fi
+        return 0
+    fi
+
+    if [ "$installed_version" == "$version" ]; then
+        echo "🔄 Version ist zwar aktuell, die App ist aber nicht (mehr) installiert. Installiere neu..."
+    else
+        echo "🔄 Update verfügbar!"
+    fi
+
+    echo "⬇️ Lade Flatpak-Bundle herunter: $target"
+    trap_download_cleanup "$target"
+    if ! download_file "$url" "$target"; then
+        clear_download_trap
+        return 1
+    fi
+    clear_download_trap
+
+    echo "⚙️ Installiere $name ($app_id) via flatpak (System-Installation, fordert evtl. sudo an)..."
+    if ! flatpak_install_bundle "$target" "$app_id"; then
+        echo "❌ Fehler: flatpak install fehlgeschlagen." >&2
+        return 1
+    fi
+
+    write_installed_marker "$marker" "$version" || return 1
+
+    echo "------------------------------------------------"
+    echo "✅ Installation von $name ($version) erfolgreich abgeschlossen!"
+    echo "------------------------------------------------"
 }

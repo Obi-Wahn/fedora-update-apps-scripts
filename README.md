@@ -1,8 +1,8 @@
-# Fedora Update Scripts
+# Fedora Update Apps Scripts
 
 [![Shell Script Checks](https://github.com/Obi-Wahn/fedora-update-apps-scripts/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/Obi-Wahn/fedora-update-apps-scripts/actions/workflows/shellcheck.yml)
 
-Eine Sammlung von Bash-Skripten, die Anwendungen unter Fedora Linux aktuell halten, deren Updates nicht (zeitnah) über die offiziellen Paketquellen (`dnf`) verfügbar sind. Jedes Skript prüft die neueste verfügbare Version (meist über die GitHub-API oder die offizielle Release-Seite), vergleicht sie mit der lokal installierten Version und installiert bei Bedarf automatisch das passende Paket (`.rpm` via `dnf`, bei GeneralsX ein `.flatpak`-Bundle via `flatpak`).
+Eine Sammlung von Bash-Skripten, die Anwendungen unter Fedora Linux aktuell halten, deren Updates nicht (zeitnah) über die offiziellen Paketquellen (`dnf`) verfügbar sind. Jedes Skript prüft die neueste verfügbare Version (meist über die GitHub-API oder die offizielle Release-Seite), vergleicht sie mit der lokal installierten Version und installiert bei Bedarf automatisch das passende Paket (`.rpm` via `dnf`, bei GeneralsX und Nextcloud Talk Desktop ein `.flatpak`-Bundle via `flatpak`).
 
 ## Enthaltene Updater
 
@@ -22,7 +22,7 @@ Für Moonfin liegt zusätzlich eine Einrichtungsanleitung bei: [`Anleitung_Moonf
 
 ### Sonderfall: Flatpak-basierte Updater (GeneralsX, Nextcloud Talk Desktop)
 
-GeneralsX und Nextcloud Talk Desktop veröffentlichen für Linux keine `.rpm`-Pakete, sondern `.flatpak`-Bundle-Dateien (aktuell nur für x86_64). `update_generalsx.sh` und `update_talk_desktop.sh` weichen deshalb vom gemeinsamen RPM-Muster ab:
+GeneralsX und Nextcloud Talk Desktop veröffentlichen für Linux keine `.rpm`-Pakete, sondern `.flatpak`-Bundle-Dateien (aktuell nur für x86_64). `update_generalsx.sh` und `update_talk_desktop.sh` weichen deshalb vom gemeinsamen RPM-Muster ab. Beide ermitteln nur noch Version und Download-URL (per `find_github_latest_asset()`) und überlassen den restlichen Ablauf der gemeinsamen Funktion `flatpak_update_app()` in `common.sh`:
 
 * Installation/Update läuft über `sudo flatpak install --system --or-update`, nicht über `dnf`. Die Installation ist damit system-weit für alle Nutzer des Rechners verfügbar (und benötigt entsprechend `sudo`, genau wie die `dnf install`-Schritte der anderen Skripte).
 * Da die Bundle-Dateinamen keine Versionsnummer enthalten, merkt sich jedes Skript die zuletzt installierte Version zusätzlich in einer einfachen Marker-Datei (`.generalsxzh-installed-version` bzw. `.talk-desktop-installed-version`). Die Marker-Datei allein reicht aber nicht aus, um eine manuelle Deinstallation zu erkennen — deshalb fragt jedes Skript vor jedem Lauf zusätzlich per `flatpak_is_installed()` (`sudo flatpak info --system`) nach, ob die App tatsächlich noch installiert ist, und installiert bei Bedarf neu, selbst wenn der Marker bereits die aktuelle Version zeigt. Die Abfrage läuft bewusst schon mit `sudo`, da `flatpak info --system` ohne erhöhte Rechte auf manchen Systemen fälschlich "nicht gefunden" meldet.
@@ -40,7 +40,7 @@ Alle Skripte folgen demselben Muster; die wiederkehrenden Bausteine (Download, P
 * **Validierung:** Prüft die extrahierte Versionsnummer per Regex, bevor sie in Dateinamen oder URLs verwendet wird.
 * **Integritätsprüfung:** Verifiziert jedes heruntergeladene Paket vor der Installation mit `rpm -qip` auf eine gültige RPM-Struktur.
 * **Interrupt-sicheres Aufräumen:** Ein `trap` entfernt eine unvollständig heruntergeladene Datei, falls der Download per Strg+C abgebrochen wird.
-* **User-Space First:** Download und Prüfung laufen ohne Root-Rechte; `sudo` wird nur für den finalen `dnf install`-Schritt angefordert.
+* **User-Space First:** Bei den RPM-Skripten laufen Download und Prüfung ohne Root-Rechte; `sudo` wird nur für den finalen `dnf install`-Schritt angefordert. Die Flatpak-Skripte brauchen `sudo` bereits für die Installationsprüfung (siehe Sonderfall oben).
 * **Striktes Fehlermanagement:** Jedes Skript nutzt `set -euo pipefail` und bricht bei Fehlern sauber mit einer verständlichen Meldung ab.
 * **Dateiverwaltung mit lokaler Sicherung:** RPM-Pakete werden in das jeweilige Skriptverzeichnis heruntergeladen (per `.gitignore` von Git ausgeschlossen). Für die aktuell installierte Version wird dort immer eine lokale Kopie vorgehalten – ist sie nicht vorhanden (z.B. nach einem frischen Klon), wird sie auch ohne anstehendes Update automatisch nachgeladen. Ältere Pakete desselben Programms werden dabei automatisch entfernt.
 
