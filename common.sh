@@ -110,13 +110,24 @@ fetch_text() {
 }
 
 # Lädt eine beliebige Datei mit Timeout- und Retry-Schutz herunter (RPM-Pakete,
-# Flatpak-Bundles, ...). Bei Fehlschlag wird eine unvollständige Datei entfernt.
+# Flatpak-Bundles, ...). Statt eines festen Zeitlimits bricht curl erst ab, wenn
+# 60 Sekunden lang weniger als 1 KB/s ankommt - große Pakete (z.B. Docker Desktop)
+# laden so auch über langsamere Leitungen vollständig.
+# Der Download landet zunächst in "<Ziel>.part" und wird erst bei Erfolg umbenannt.
+# Eine bereits vorhandene Zieldatei (z.B. die lokale Kopie eines Flatpak-Bundles mit
+# festem Dateinamen) bleibt so bei einem Fehlschlag oder Strg+C unangetastet.
 download_file() {
     local url="$1"
     local target="$2"
-    if ! curl --connect-timeout 10 --max-time 120 -fL -# --retry 3 -o "$target" "$url"; then
+    local partial="${target}.part"
+    if ! curl --connect-timeout 10 --speed-limit 1024 --speed-time 60 -fL -# --retry 3 -o "$partial" "$url"; then
         echo "❌ Fehler: Download fehlgeschlagen (Timeout oder Netzwerkfehler)." >&2
-        rm -f "$target"
+        rm -f "$partial"
+        return 1
+    fi
+    if ! mv -f "$partial" "$target"; then
+        echo "❌ Fehler: Konnte die heruntergeladene Datei nicht nach $target verschieben." >&2
+        rm -f "$partial"
         return 1
     fi
 }
@@ -239,8 +250,8 @@ ensure_local_backup() {
     cleanup_old_rpms "$dest_dir" "$name_pattern" "$(basename "$target")"
 }
 
-# Gemeinsamer Abschluss der RPM-Updater: Paket herunterladen, RPM-Struktur prüfen,
-# per dnf installieren und ältere Pakete desselben Programms im Zielverzeichnis
+# Gemeinsamer Abschluss der RPM-Updater: Paket herunterladen, prüfen (verify_rpm:
+# Struktur, Prüfsummen, Signatur), per dnf installieren und ältere Pakete desselben Programms im Zielverzeichnis
 # entfernen. Gibt bei Fehlschlag 1 zurück (Aufrufer: "... || exit 1" bzw. in
 # Schleifen "|| continue"). Ein fehlgeschlagenes Aufräumen gilt nicht als Fehler.
 # Nutzung: install_rpm_update <Anzeigename> <Download-URL> <Ziel-RPM> <Muster alter RPMs>
@@ -270,14 +281,15 @@ install_rpm_update() {
     cleanup_old_rpms "$(dirname "$target")" "$name_pattern" "$(basename "$target")" || true
 }
 
-# Räumt eine unvollständige Zieldatei auf, falls der Download per Strg+C
-# unterbrochen wird. clear_download_trap() nach einem erfolgreichen Download
-# aufrufen, damit spätere Schritte (z.B. die Installation) davon nicht betroffen sind.
+# Räumt die unvollständige Zwischendatei ("<Ziel>.part", siehe download_file) auf,
+# falls der Download per Strg+C unterbrochen wird. Die eigentliche Zieldatei wird
+# dabei nicht angefasst. clear_download_trap() nach dem Download aufrufen, damit
+# spätere Schritte (z.B. die Installation) davon nicht betroffen sind.
 _DOWNLOAD_CLEANUP_TARGET=""
 
 trap_download_cleanup() {
     _DOWNLOAD_CLEANUP_TARGET="$1"
-    trap 'rm -f "$_DOWNLOAD_CLEANUP_TARGET"' INT TERM
+    trap 'rm -f "${_DOWNLOAD_CLEANUP_TARGET}.part"' INT TERM
 }
 
 clear_download_trap() {
@@ -347,7 +359,8 @@ except Exception as e:
 # Die Marker-Datei allein erkennt keine manuelle Deinstallation, daher wird
 # zusätzlich flatpak_is_installed() abgefragt. Da der Bundle-Dateiname keine
 # Versionsnummer enthält, wird er bei jedem Update überschrieben - es gibt also
-# keine alten Bundle-Dateien aufzuräumen.
+# keine alten Bundle-Dateien aufzuräumen. download_file() ersetzt die alte Datei
+# erst nach vollständigem Download, die lokale Kopie geht also nicht verloren.
 # Nutzung: flatpak_update_app <Anzeigename> <App-ID> <Bundle-Datei> <Marker-Datei> <Version> <Download-URL>
 flatpak_update_app() {
     local name="$1"

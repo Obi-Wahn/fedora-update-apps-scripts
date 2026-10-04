@@ -2,9 +2,15 @@
 
 Diese Anleitung beschreibt die vollständige Einrichtung von Moonfin auf einem HP-Desktop unter Fedora 44. Sie beinhaltet das automatisierte Skript für den korrekten Download sowie die essenziellen Codec-Anpassungen, damit auch HEVC-Videos (H.265) mit funktionierender Hardwarebeschleunigung laufen.
 
-## 1. Das Installations- und Update-Skript anlegen
+## 1. Moonfin installieren und aktuell halten
 
-*(Dieser Abschnitt war in der ursprünglichen Anleitung noch leer. Das Skript liegt als [`update_moonfin.sh`](./update_moonfin.sh) im Repository-Root.)*
+Installation und Updates übernimmt das Skript [`update_moonfin.sh`](./update_moonfin.sh) aus diesem Repository. Es lädt das passende RPM-Paket von GitHub herunter und installiert es per `dnf`:
+
+```bash
+./update_moonfin.sh
+```
+
+Alternativ läuft es zusammen mit allen anderen Updatern über `./update_all.sh`.
 
 ## 2. Fedora-Codecs & Hardwarebeschleunigung freischalten
 
