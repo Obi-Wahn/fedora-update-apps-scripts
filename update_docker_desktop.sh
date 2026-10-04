@@ -68,22 +68,8 @@ fi
 
 echo "🔄 Neue Version verfügbar: $VERSION (lokal: ${LOCAL_VERSION:-nicht installiert})"
 
-# 10. Download mit Fortschrittsanzeige, Fehlerprüfung und Timeout-Logik
-echo "⬇️ Lade Paket herunter in: $TARGET_RPM"
-trap_download_cleanup "$TARGET_RPM"
-download_rpm "$RPM_URL" "$TARGET_RPM" || exit 1
-clear_download_trap
-
-# Absicherung: Prüfen, ob die heruntergeladene Datei ein gültiges und unbeschädigtes RPM-Paket ist
-verify_rpm "$TARGET_RPM" || exit 1
-
-# 11. Installation / Upgrade
-echo "⚙️ Installiere Update (fordert evtl. sudo an)..."
-sudo dnf install -y "$TARGET_RPM"
-
-# 12. Aufräumen alter Versionen
-echo "🧹 Entferne alte Docker-Desktop-Installationsdateien..."
-cleanup_old_rpms "$DEST_DIR" "docker-desktop-*.rpm" "$(basename "$TARGET_RPM")" || true
+# 10. Download, Prüfung, Installation und Aufräumen
+install_rpm_update "Docker Desktop" "$RPM_URL" "$TARGET_RPM" "docker-desktop-*.rpm" || exit 1
 
 echo "------------------------------------------------"
 echo "✅ Update auf Docker Desktop $VERSION erfolgreich abgeschlossen!"

@@ -99,20 +99,7 @@ if ! version_needs_update "$LOCAL_VERSION_NORMALIZED" "$LATEST_VERSION"; then
     exit 0
 fi
 
-echo "⬇️ Lade RPM-Paket herunter in: $TARGET_RPM"
-trap_download_cleanup "$TARGET_RPM"
-download_rpm "$LATEST_URL" "$TARGET_RPM" || exit 1
-clear_download_trap
-
-# Absicherung: Prüfen, ob die heruntergeladene Datei ein gültiges RPM-Paket ist
-verify_rpm "$TARGET_RPM" || exit 1
-
-echo "⚙️ Installiere Update (fordert evtl. sudo an)..."
-sudo dnf install -y "$TARGET_RPM"
-
-# Aufräumen alter Versionen
-echo "🧹 Entferne alte Moonfin-Installationsdateien..."
-cleanup_old_rpms "$DEST_DIR" "moonfin-*.rpm" "$(basename "$TARGET_RPM")" || true
+install_rpm_update "Moonfin" "$LATEST_URL" "$TARGET_RPM" "moonfin-*.rpm" || exit 1
 
 echo "------------------------------------------------"
 echo "✅ Installation von Moonfin $LATEST_VERSION erfolgreich abgeschlossen!"

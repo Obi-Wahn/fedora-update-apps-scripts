@@ -126,14 +126,41 @@ download_rpm() {
     download_file "$@"
 }
 
-# Prüft die RPM-Struktur einer heruntergeladenen Datei; entfernt sie bei Beschädigung.
+# Prüft eine heruntergeladene RPM-Datei und entfernt sie bei einem Fehler:
+#  1. RPM-Struktur (rpm -qip)
+#  2. Prüfsummen (rpm -K --nosignature) – erkennt beschädigte/abgeschnittene Downloads
+#  3. GPG-Signatur (rpm -Kv --nodigest) – eine ungültige Signatur (BAD) bricht ab;
+#     ein fehlender Schlüssel (NOKEY) oder ein unsigniertes Paket ergibt nur einen
+#     Hinweis, da viele der Upstream-Pakete nicht signiert sind bzw. der Schlüssel
+#     nicht importiert ist.
 verify_rpm() {
     local target="$1"
-    echo "🛡️ Prüfe Datei-Integrität (RPM-Struktur)..."
+    local sig_output
+
+    echo "🛡️ Prüfe Datei-Integrität (RPM-Struktur und Prüfsummen)..."
     if ! rpm -qip "$target" >/dev/null 2>&1; then
         echo "❌ Fehler: Die heruntergeladene Datei ist beschädigt oder kein gültiges RPM-Paket. Abbruch." >&2
         rm -f "$target"
         return 1
+    fi
+
+    if ! rpm -K --nosignature "$target" >/dev/null 2>&1; then
+        echo "❌ Fehler: Prüfsummen des RPM-Pakets stimmen nicht (rpm -K). Abbruch." >&2
+        rm -f "$target"
+        return 1
+    fi
+
+    sig_output=$(LC_ALL=C rpm -Kv --nodigest "$target" 2>&1 || true)
+    if echo "$sig_output" | grep -q 'Signature.*: BAD'; then
+        echo "❌ Fehler: Die GPG-Signatur des RPM-Pakets ist ungültig (rpm -K). Abbruch." >&2
+        rm -f "$target"
+        return 1
+    elif echo "$sig_output" | grep -Eq 'Signature.*: (NOKEY|NOTTRUSTED)'; then
+        echo "⚠️ Hinweis: RPM ist signiert, der Schlüssel ist aber nicht importiert – Signatur nicht prüfbar."
+    elif echo "$sig_output" | grep -q 'Signature.*: OK'; then
+        echo "🔏 GPG-Signatur des RPM-Pakets ist gültig."
+    else
+        echo "ℹ️ Hinweis: RPM-Paket ist nicht signiert (nur Prüfsummen geprüft)."
     fi
 }
 
@@ -210,6 +237,37 @@ ensure_local_backup() {
     fi
 
     cleanup_old_rpms "$dest_dir" "$name_pattern" "$(basename "$target")"
+}
+
+# Gemeinsamer Abschluss der RPM-Updater: Paket herunterladen, RPM-Struktur prüfen,
+# per dnf installieren und ältere Pakete desselben Programms im Zielverzeichnis
+# entfernen. Gibt bei Fehlschlag 1 zurück (Aufrufer: "... || exit 1" bzw. in
+# Schleifen "|| continue"). Ein fehlgeschlagenes Aufräumen gilt nicht als Fehler.
+# Nutzung: install_rpm_update <Anzeigename> <Download-URL> <Ziel-RPM> <Muster alter RPMs>
+install_rpm_update() {
+    local name="$1"
+    local url="$2"
+    local target="$3"
+    local name_pattern="$4"
+
+    echo "⬇️ Lade Paket herunter in: $target"
+    trap_download_cleanup "$target"
+    if ! download_rpm "$url" "$target"; then
+        clear_download_trap
+        return 1
+    fi
+    clear_download_trap
+
+    verify_rpm "$target" || return 1
+
+    echo "⚙️ Installiere Update für $name (fordert evtl. sudo an)..."
+    if ! sudo dnf install -y "$target"; then
+        echo "❌ Fehler: dnf install für $name fehlgeschlagen." >&2
+        return 1
+    fi
+
+    echo "🧹 Entferne alte $name-Installationsdateien..."
+    cleanup_old_rpms "$(dirname "$target")" "$name_pattern" "$(basename "$target")" || true
 }
 
 # Räumt eine unvollständige Zieldatei auf, falls der Download per Strg+C

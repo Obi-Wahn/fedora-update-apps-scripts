@@ -38,7 +38,7 @@ Alle Skripte folgen demselben Muster; die wiederkehrenden Bausteine (Download, P
 * **Versionsabgleich mit Downgrade-Schutz:** Vergleicht die installierte Version (per `rpm -q` bzw. dem jeweiligen `--version`-Aufruf) mit der neuesten verfügbaren Version per `sort -V`. Ist die installierte Version bereits aktuell oder neuer, bricht das Skript ohne Download ab – ein versehentliches Downgrade wird so vermieden.
 * **Robuste API-/Web-Abfrage:** Nutzt Python (`urllib`/`json`) für zuverlässiges JSON-Parsing der GitHub-API (inkl. Timeout und Fehlerursache auf stderr) bzw. `curl` mit Timeouts (`--connect-timeout`, `--max-time`) und Retry-Logik (`--retry`) für Downloads und Webseiten-Abfragen.
 * **Validierung:** Prüft die extrahierte Versionsnummer per Regex, bevor sie in Dateinamen oder URLs verwendet wird.
-* **Integritätsprüfung:** Verifiziert jedes heruntergeladene Paket vor der Installation mit `rpm -qip` auf eine gültige RPM-Struktur.
+* **Integritätsprüfung:** Verifiziert jedes heruntergeladene Paket vor der Installation mit `rpm -qip` (gültige RPM-Struktur) und `rpm -K` (Prüfsummen; eine ungültige GPG-Signatur führt zum Abbruch, ein fehlender Schlüssel oder ein unsigniertes Paket nur zu einem Hinweis).
 * **Interrupt-sicheres Aufräumen:** Ein `trap` entfernt eine unvollständig heruntergeladene Datei, falls der Download per Strg+C abgebrochen wird.
 * **User-Space First:** Bei den RPM-Skripten laufen Download und Prüfung ohne Root-Rechte; `sudo` wird nur für den finalen `dnf install`-Schritt angefordert. Die Flatpak-Skripte brauchen `sudo` bereits für die Installationsprüfung (siehe Sonderfall oben).
 * **Striktes Fehlermanagement:** Jedes Skript nutzt `set -euo pipefail` und bricht bei Fehlern sauber mit einer verständlichen Meldung ab.
