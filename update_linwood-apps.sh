@@ -26,15 +26,20 @@ APPS=(
     "Flow|linwood-flow"
 )
 
+# Fehlgeschlagene Apps sammeln: Die Schleife läuft bei einem Fehler mit der nächsten
+# App weiter, am Ende meldet das Skript den Fehlschlag aber per Exit-Code, damit
+# update_all.sh ihn in seiner Zusammenfassung aufführt.
+FAILED_APPS=()
+
 for APP in "${APPS[@]}"; do
     echo "------------------------------------------------"
     IFS='|' read -r REPO PKG_NAME <<< "$APP"
 
     echo "🌐 Frage GitHub-API für $PKG_NAME ab..."
 
-    # Fehleranfällige Zuweisung ersetzt durch saubere Fehlerabfangung für API-Abbrüche
     if ! API_RESPONSE=$(find_latest_github_rpm_release "LinwoodDev/$REPO" "linux-${DL_ARCH}.rpm"); then
         echo "❌ Fehler: Konnte Release-Infos für $PKG_NAME nicht abrufen (siehe Ursache oben, oder API-Limit erreicht)." >&2
+        FAILED_APPS+=("$PKG_NAME")
         continue
     fi
 
@@ -42,7 +47,10 @@ for APP in "${APPS[@]}"; do
     URL=$(echo "$API_RESPONSE" | cut -d'|' -f2)
 
     # Validierung der extrahierten Versionsnummer (inklusive Beta-Suffixe)
-    validate_version "$NEW_VERSION" || continue
+    if ! validate_version "$NEW_VERSION"; then
+        FAILED_APPS+=("$PKG_NAME")
+        continue
+    fi
 
     # Lokale Version abrufen und normalisieren
     LOCAL_VERSION=""
@@ -71,26 +79,17 @@ for APP in "${APPS[@]}"; do
 
     echo "🔄 Update verfügbar! Starte Download..."
 
-    echo "⬇️ Lade Paket von $URL herunter..."
-    trap_download_cleanup "$TARGET_RPM"
-    if ! download_rpm "$URL" "$TARGET_RPM"; then
-        clear_download_trap
+    if ! install_rpm_update "$PKG_NAME" "$URL" "$TARGET_RPM" "${PKG_NAME}-*.rpm"; then
+        FAILED_APPS+=("$PKG_NAME")
         continue
     fi
-    clear_download_trap
-
-    if ! verify_rpm "$TARGET_RPM"; then
-        continue
-    fi
-
-    echo "⚙️ Installiere Update für $PKG_NAME (fordert evtl. sudo an)..."
-    sudo dnf install -y "$TARGET_RPM"
-
-    echo "🧹 Entferne alte Installationsdateien für $PKG_NAME..."
-    cleanup_old_rpms "$DEST_DIR" "${PKG_NAME}-*.rpm" "$(basename "$TARGET_RPM")" || true
 
     echo "✅ Installation von $PKG_NAME ($NEW_VERSION) erfolgreich abgeschlossen!"
 done
 
 echo "------------------------------------------------"
+if [ "${#FAILED_APPS[@]}" -gt 0 ]; then
+    echo "❌ Folgende Linwood-Apps konnten nicht aktualisiert werden: ${FAILED_APPS[*]}" >&2
+    exit 1
+fi
 echo "🎉 Alle Vorgänge abgeschlossen."

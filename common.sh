@@ -212,6 +212,37 @@ ensure_local_backup() {
     cleanup_old_rpms "$dest_dir" "$name_pattern" "$(basename "$target")"
 }
 
+# Gemeinsamer Abschluss der RPM-Updater: Paket herunterladen, RPM-Struktur prüfen,
+# per dnf installieren und ältere Pakete desselben Programms im Zielverzeichnis
+# entfernen. Gibt bei Fehlschlag 1 zurück (Aufrufer: "... || exit 1" bzw. in
+# Schleifen "|| continue"). Ein fehlgeschlagenes Aufräumen gilt nicht als Fehler.
+# Nutzung: install_rpm_update <Anzeigename> <Download-URL> <Ziel-RPM> <Muster alter RPMs>
+install_rpm_update() {
+    local name="$1"
+    local url="$2"
+    local target="$3"
+    local name_pattern="$4"
+
+    echo "⬇️ Lade Paket herunter in: $target"
+    trap_download_cleanup "$target"
+    if ! download_rpm "$url" "$target"; then
+        clear_download_trap
+        return 1
+    fi
+    clear_download_trap
+
+    verify_rpm "$target" || return 1
+
+    echo "⚙️ Installiere Update für $name (fordert evtl. sudo an)..."
+    if ! sudo dnf install -y "$target"; then
+        echo "❌ Fehler: dnf install für $name fehlgeschlagen." >&2
+        return 1
+    fi
+
+    echo "🧹 Entferne alte $name-Installationsdateien..."
+    cleanup_old_rpms "$(dirname "$target")" "$name_pattern" "$(basename "$target")" || true
+}
+
 # Räumt eine unvollständige Zieldatei auf, falls der Download per Strg+C
 # unterbrochen wird. clear_download_trap() nach einem erfolgreichen Download
 # aufrufen, damit spätere Schritte (z.B. die Installation) davon nicht betroffen sind.

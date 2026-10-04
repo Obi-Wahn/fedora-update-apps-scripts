@@ -55,19 +55,7 @@ fi
 
 echo "🔄 Ein Update auf Version $LATEST_VERSION ist verfügbar! Starte Download..."
 
-echo "⬇️ Lade RPM-Paket herunter in: $TARGET_RPM"
-trap_download_cleanup "$TARGET_RPM"
-download_rpm "$LATEST_URL" "$TARGET_RPM" || exit 1
-clear_download_trap
-
-verify_rpm "$TARGET_RPM" || exit 1
-
-echo "⚙️ Installiere Update (fordert evtl. sudo an)..."
-sudo dnf install -y "$TARGET_RPM"
-
-# Alte Versionen bereinigen
-echo "🧹 Entferne alte OpenLogi-Installationsdateien..."
-cleanup_old_rpms "$DEST_DIR" "openlogi-*.rpm" "$(basename "$TARGET_RPM")" || true
+install_rpm_update "OpenLogi" "$LATEST_URL" "$TARGET_RPM" "openlogi-*.rpm" || exit 1
 
 echo "------------------------------------------------"
 echo "✅ Update auf OpenLogi $LATEST_VERSION erfolgreich abgeschlossen!"

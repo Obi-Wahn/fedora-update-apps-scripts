@@ -9,6 +9,7 @@ source "$SCRIPT_DIR/common.sh"
 # 1. Prüfen, ob die benötigten Werkzeuge vorhanden sind
 require_cmd curl "curl ist nicht installiert."
 require_cmd dnf "dnf ist nicht installiert. Dieses Skript erfordert Fedora/RHEL."
+require_cmd rpm "rpm ist nicht installiert."
 require_cmd python3 "python3 ist nicht installiert."
 
 echo "🔍 Ermittle aktuellste Versionsnummer für Fastfetch..."
@@ -59,23 +60,8 @@ fi
 
 echo "🔄 Neue Version verfügbar: $VERSION (lokal: ${LOCAL_VERSION:-nicht installiert})"
 
-# 6. Download mit Timeout-Sicherung
-echo "⬇️ Lade Paket herunter in: $TARGET_RPM"
-
-trap_download_cleanup "$TARGET_RPM"
-download_rpm "$URL" "$TARGET_RPM" || exit 1
-clear_download_trap
-
-# Absicherung: Prüfen, ob die heruntergeladene Datei ein gültiges RPM-Paket ist
-verify_rpm "$TARGET_RPM" || exit 1
-
-# Installation
-echo "⚙️ Installiere Update (fordert evtl. sudo an)..."
-sudo dnf install -y "$TARGET_RPM"
-
-# Aufräumen alter Versionen
-echo "🧹 Entferne alte Fastfetch-Installationsdateien..."
-cleanup_old_rpms "$DEST_DIR" "fastfetch-*.rpm" "$(basename "$TARGET_RPM")" || true
+# 6. Download, Prüfung, Installation und Aufräumen
+install_rpm_update "Fastfetch" "$URL" "$TARGET_RPM" "fastfetch-*.rpm" || exit 1
 
 echo "------------------------------------------------"
 echo "✅ Update auf Version $VERSION erfolgreich abgeschlossen!"
