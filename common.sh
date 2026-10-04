@@ -126,14 +126,41 @@ download_rpm() {
     download_file "$@"
 }
 
-# Prüft die RPM-Struktur einer heruntergeladenen Datei; entfernt sie bei Beschädigung.
+# Prüft eine heruntergeladene RPM-Datei und entfernt sie bei einem Fehler:
+#  1. RPM-Struktur (rpm -qip)
+#  2. Prüfsummen (rpm -K --nosignature) – erkennt beschädigte/abgeschnittene Downloads
+#  3. GPG-Signatur (rpm -Kv --nodigest) – eine ungültige Signatur (BAD) bricht ab;
+#     ein fehlender Schlüssel (NOKEY) oder ein unsigniertes Paket ergibt nur einen
+#     Hinweis, da viele der Upstream-Pakete nicht signiert sind bzw. der Schlüssel
+#     nicht importiert ist.
 verify_rpm() {
     local target="$1"
-    echo "🛡️ Prüfe Datei-Integrität (RPM-Struktur)..."
+    local sig_output
+
+    echo "🛡️ Prüfe Datei-Integrität (RPM-Struktur und Prüfsummen)..."
     if ! rpm -qip "$target" >/dev/null 2>&1; then
         echo "❌ Fehler: Die heruntergeladene Datei ist beschädigt oder kein gültiges RPM-Paket. Abbruch." >&2
         rm -f "$target"
         return 1
+    fi
+
+    if ! rpm -K --nosignature "$target" >/dev/null 2>&1; then
+        echo "❌ Fehler: Prüfsummen des RPM-Pakets stimmen nicht (rpm -K). Abbruch." >&2
+        rm -f "$target"
+        return 1
+    fi
+
+    sig_output=$(LC_ALL=C rpm -Kv --nodigest "$target" 2>&1 || true)
+    if echo "$sig_output" | grep -q 'Signature.*: BAD'; then
+        echo "❌ Fehler: Die GPG-Signatur des RPM-Pakets ist ungültig (rpm -K). Abbruch." >&2
+        rm -f "$target"
+        return 1
+    elif echo "$sig_output" | grep -Eq 'Signature.*: (NOKEY|NOTTRUSTED)'; then
+        echo "⚠️ Hinweis: RPM ist signiert, der Schlüssel ist aber nicht importiert – Signatur nicht prüfbar."
+    elif echo "$sig_output" | grep -q 'Signature.*: OK'; then
+        echo "🔏 GPG-Signatur des RPM-Pakets ist gültig."
+    else
+        echo "ℹ️ Hinweis: RPM-Paket ist nicht signiert (nur Prüfsummen geprüft)."
     fi
 }
 
