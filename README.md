@@ -16,7 +16,7 @@ Eine Sammlung von Bash-Skripten, die Anwendungen unter Fedora Linux aktuell halt
 | `update_generalsx.sh` | [GeneralsX](https://github.com/fbraz3/GeneralsX) (nur Zero Hour) über die GitHub-Releases — **Sonderfall:** nutzt `flatpak` statt `dnf`/`rpm`, siehe Hinweis unten |
 | `update_talk_desktop.sh` | [Nextcloud Talk Desktop](https://github.com/nextcloud/talk-desktop) (nur stabile Releases) über die GitHub-Releases von [nextcloud-releases/talk-desktop](https://github.com/nextcloud-releases/talk-desktop) — **Sonderfall:** nutzt `flatpak` statt `dnf`/`rpm`, siehe Hinweis unten |
 
-Alle Skripte liegen direkt im Wurzelverzeichnis und binden [`common.sh`](./common.sh) ein, das gemeinsam genutzte Funktionen bereitstellt (siehe unten). `common.sh` ist keine eigenständige Updater; sie wird nur per `source` eingebunden und muss nicht ausführbar sein oder manuell gestartet werden.
+Alle Skripte liegen direkt im Wurzelverzeichnis und binden [`common.sh`](./common.sh) ein, das gemeinsam genutzte Funktionen bereitstellt (siehe unten). `common.sh` ist kein eigenständiger Updater; die Datei wird nur per `source` eingebunden und muss nicht ausführbar sein oder manuell gestartet werden.
 
 Für Moonfin liegt zusätzlich eine Einrichtungsanleitung bei: [`Anleitung_Moonfin_auf_Fedora_44_einrichten.md`](./Anleitung_Moonfin_auf_Fedora_44_einrichten.md).
 
@@ -36,13 +36,13 @@ Alle Skripte folgen demselben Muster; die wiederkehrenden Bausteine (Download, P
 
 * **Architekturerkennung:** Ermittelt per `uname -m` automatisch, ob x86_64 oder aarch64 vorliegt, und wählt das passende `.rpm`-Paket.
 * **Versionsabgleich mit Downgrade-Schutz:** Vergleicht die installierte Version (per `rpm -q` bzw. dem jeweiligen `--version`-Aufruf) mit der neuesten verfügbaren Version per `sort -V`. Ist die installierte Version bereits aktuell oder neuer, bricht das Skript ohne Download ab – ein versehentliches Downgrade wird so vermieden.
-* **Robuste API-/Web-Abfrage:** Nutzt Python (`urllib`/`json`) für zuverlässiges JSON-Parsing der GitHub-API (inkl. Timeout und Fehlerursache auf stderr) bzw. `curl` mit Timeouts (`--connect-timeout`, `--max-time`) und Retry-Logik (`--retry`) für Downloads und Webseiten-Abfragen.
+* **Robuste API-/Web-Abfrage:** Nutzt Python (`urllib`/`json`) für zuverlässiges JSON-Parsing der GitHub-API (inkl. Timeout und Fehlerursache auf stderr) bzw. `curl` mit Timeouts und Retry-Logik (`--retry`) für Downloads und Webseiten-Abfragen. Downloads brechen nicht nach einer festen Zeit ab, sondern erst, wenn 60 Sekunden lang kaum Daten ankommen (`--speed-limit`/`--speed-time`), damit auch große Pakete über langsamere Leitungen durchlaufen.
 * **Validierung:** Prüft die extrahierte Versionsnummer per Regex, bevor sie in Dateinamen oder URLs verwendet wird.
 * **Integritätsprüfung:** Verifiziert jedes heruntergeladene Paket vor der Installation mit `rpm -qip` (gültige RPM-Struktur) und `rpm -K` (Prüfsummen; eine ungültige GPG-Signatur führt zum Abbruch, ein fehlender Schlüssel oder ein unsigniertes Paket nur zu einem Hinweis).
-* **Interrupt-sicheres Aufräumen:** Ein `trap` entfernt eine unvollständig heruntergeladene Datei, falls der Download per Strg+C abgebrochen wird.
+* **Interrupt-sicheres Aufräumen:** Downloads landen zuerst in einer Zwischendatei (`*.part`) und werden erst bei Erfolg umbenannt. Ein `trap` entfernt die Zwischendatei, falls der Download per Strg+C abgebrochen wird; eine bereits vorhandene lokale Kopie bleibt dabei erhalten.
 * **User-Space First:** Bei den RPM-Skripten laufen Download und Prüfung ohne Root-Rechte; `sudo` wird nur für den finalen `dnf install`-Schritt angefordert. Die Flatpak-Skripte brauchen `sudo` bereits für die Installationsprüfung (siehe Sonderfall oben).
 * **Striktes Fehlermanagement:** Jedes Skript nutzt `set -euo pipefail` und bricht bei Fehlern sauber mit einer verständlichen Meldung ab.
-* **Dateiverwaltung mit lokaler Sicherung:** RPM-Pakete werden in das jeweilige Skriptverzeichnis heruntergeladen (per `.gitignore` von Git ausgeschlossen). Für die aktuell installierte Version wird dort immer eine lokale Kopie vorgehalten – ist sie nicht vorhanden (z.B. nach einem frischen Klon), wird sie auch ohne anstehendes Update automatisch nachgeladen. Ältere Pakete desselben Programms werden dabei automatisch entfernt.
+* **Dateiverwaltung mit lokaler Sicherung:** RPM-Pakete und Flatpak-Bundles werden in das jeweilige Skriptverzeichnis heruntergeladen (per `.gitignore` von Git ausgeschlossen). Für die aktuell installierte Version wird dort immer eine lokale Kopie vorgehalten – ist sie nicht vorhanden (z.B. nach einem frischen Klon), wird sie auch ohne anstehendes Update automatisch nachgeladen. Ältere RPM-Pakete desselben Programms werden dabei automatisch entfernt; die Flatpak-Bundles haben einen festen Dateinamen und werden bei einem Update einfach ersetzt.
 
 ## `update_all.sh` – alle Updates auf einmal
 

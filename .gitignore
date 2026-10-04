@@ -1,6 +1,8 @@
 # Von den update_*.sh-Skripten heruntergeladene Pakete
 *.rpm
 *.flatpak
+# Zwischendateien laufender/abgebrochener Downloads
+*.part
 
 # Marker-Dateien der Flatpak-Skripte (zuletzt installierte Version/Release-Tag)
 .*-installed-version
