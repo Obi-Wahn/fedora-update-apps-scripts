@@ -37,8 +37,9 @@ fi
 TAG=$(echo "$RELEASE_INFO" | cut -d'|' -f1)
 URL=$(echo "$RELEASE_INFO" | cut -d'|' -f2)
 
-# GeneralsX nutzt kein Semver (z.B. "GeneralsX-Beta-19"), daher nur ein loser
-# Format-Check statt der strikten X.Y.Z-Validierung der übrigen Skripte
+# GeneralsX nutzt inzwischen Semver-Tags (z.B. "1.0.2"), früher aber freie Namen
+# wie "GeneralsX-Beta-19". Der lose Format-Check akzeptiert beide Formen, damit das
+# Skript nicht bricht, falls wieder ein Tag ohne X.Y.Z-Schema erscheint.
 validate_identifier "$TAG" || exit 1
 
 flatpak_update_app "GeneralsX (Zero Hour)" "$APP_ID" "$TARGET_FILE" "$MARKER_FILE" "$TAG" "$URL" || exit 1

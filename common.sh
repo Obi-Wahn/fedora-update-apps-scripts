@@ -181,8 +181,8 @@ cleanup_old_rpms() {
 # Prüft ein Versions-/Release-Tag auf ein sicheres, dateinamentaugliches Format
 # (nur Buchstaben, Ziffern, Punkt, Bindestrich, Unterstrich), bevor es in
 # Dateinamen oder Marker-Dateien verwendet wird. Anders als validate_version()
-# erzwingt dies KEIN X.Y.Z-Schema - für Projekte mit freien Tag-Namen wie
-# "GeneralsX-Beta-19", bei denen der Anbieter kein Semver nutzt.
+# erzwingt dies KEIN X.Y.Z-Schema - für Projekte, deren Tags nicht verlässlich
+# Semver folgen (z.B. GeneralsX: früher "GeneralsX-Beta-19", heute "1.0.2").
 validate_identifier() {
     local identifier="$1"
     if [[ ! "$identifier" =~ ^[A-Za-z0-9._-]+$ ]]; then
