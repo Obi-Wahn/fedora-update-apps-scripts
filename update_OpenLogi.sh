@@ -36,7 +36,7 @@ if rpm -q openlogi >/dev/null 2>&1; then
     LOCAL_VERSION_NORMALIZED=$(normalize_version "$LOCAL_VERSION")
 fi
 
-echo "📦 Installierte Version: ${LOCAL_VERSION:-none}"
+echo "📦 Installierte Version: ${LOCAL_VERSION:-nicht installiert}"
 echo "🌐 Neueste verfügbare Version mit RPM: ${LATEST_VERSION}"
 
 # Zielverzeichnis und Zieldatei (werden in beiden Zweigen unten gebraucht)
