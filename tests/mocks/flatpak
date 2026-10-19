@@ -1,0 +1,9 @@
+#!/bin/bash
+# Mock für flatpak. FLATPAK_INSTALLED enthält die installierten App-IDs
+# (durch Leerzeichen getrennt). FLATPAK_FAIL=1 lässt "install" scheitern.
+echo "flatpak $*" >> "${MOCK_LOG:-/dev/null}"
+case "$1" in
+    info) [[ " ${FLATPAK_INSTALLED:-} " == *" ${!#} "* ]] ;;
+    install) [ "${FLATPAK_FAIL:-0}" != 1 ] ;;
+    *) exit 0 ;;
+esac

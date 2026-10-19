@@ -71,6 +71,22 @@ chmod +x update_fastfetch.sh
 * **Architektur:** x86_64 oder aarch64
 * **Abhängigkeiten:** `bash`, `curl`, `dnf`, `rpm`, `python3`, `coreutils` (u.a. `sort -V` für den Downgrade-Schutz) (je nach Skript zusätzlich `awk`, `grep`, `sed`; `update_generalsx.sh` und `update_talk_desktop.sh` benötigen statt `dnf`/`rpm` zusätzlich `flatpak`, aktuell nur für x86_64 verfügbar)
 
+## Tests
+
+Bei jedem Pull Request und jedem Push auf `main` laufen in GitHub Actions automatisch:
+
+* **Syntax und ShellCheck** (`bash -n`, `shellcheck -x`) für alle Skripte.
+* **Bats-Tests** (Ordner [`tests/`](./tests)) im aktuellen Fedora-Container:
+  * `common.bats` – Hilfsfunktionen aus `common.sh` (Versionsvergleich, Downloads mit `.part`-Datei, Aufräumen, RPM-Prüfung, root-Sperre, ERR-Trap).
+  * `scripts.bats` – Abläufe der Update-Skripte und von `update_all.sh` (Update, bereits aktuell, Fehlerfälle). `dnf`, `rpm`, `curl`, `flatpak`, `sudo` und die GitHub-Abfragen werden dabei durch Attrappen aus [`tests/mocks/`](./tests/mocks) ersetzt; es wird nichts installiert oder heruntergeladen.
+  * `rpm.bats` – `verify_rpm()` gegen das **echte** `rpm` der aktuellen Fedora-Version, mit Test-Paketen aus [`tests/build-test-rpms.sh`](./tests/build-test-rpms.sh) (unsigniert, gültig signiert, unbekannter Schlüssel, manipulierte Signatur, beschädigter Inhalt). So fallen Änderungen am Ausgabeformat von `rpm` sofort auf.
+
+Lokal lassen sich die Tests mit installiertem `bats` als normaler Benutzer starten (`rpm.bats` wird ohne vorbereitete Test-Pakete übersprungen):
+
+```bash
+bats tests
+```
+
 ## Hinweis zur Entwicklung (KI-Transparenz)
 
 Der Quellcode dieser Skripte sowie Teile dieser Dokumentation wurden in Zusammenarbeit mit generativen KI-Modellen (Large Language Models) iterativ entwickelt, auf Robustheit geprüft und optimiert.

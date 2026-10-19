@@ -8,7 +8,7 @@
 # Installationsschritte selbst an. Als root würden heruntergeladene Pakete, .part-
 # und Marker-Dateien root gehören, und spätere normale Läufe könnten sie nicht mehr
 # ersetzen oder löschen.
-if [ "$EUID" -eq 0 ]; then
+if [ "$(id -u)" -eq 0 ]; then
     echo "❌ Fehler: Bitte nicht als root bzw. mit sudo starten. Das Skript fordert sudo-Rechte bei Bedarf selbst an." >&2
     exit 1
 fi

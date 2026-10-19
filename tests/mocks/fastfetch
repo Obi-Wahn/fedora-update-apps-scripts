@@ -1,0 +1,3 @@
+#!/bin/bash
+# Mock für "fastfetch --version": gibt die lokal "installierte" Version FF_LOCAL aus.
+echo "fastfetch ${FF_LOCAL} (x86_64)"

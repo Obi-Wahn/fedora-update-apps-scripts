@@ -17,7 +17,7 @@ jobs:
           set -uo pipefail
           status=0
           shopt -s nullglob
-          for f in *.sh; do
+          for f in *.sh tests/*.sh tests/mocks/*; do
             echo "== bash -n $f =="
             bash -n "$f" || status=1
           done
@@ -28,8 +28,36 @@ jobs:
           set -uo pipefail
           status=0
           shopt -s nullglob
-          for f in *.sh; do
+          for f in *.sh tests/*.sh tests/mocks/*; do
             echo "== shellcheck -x $f =="
             shellcheck -x "$f" || status=1
           done
           exit "$status"
+
+  bats:
+    # Läuft im aktuellen Fedora, damit die RPM-Tests das echte rpm dieser
+    # Version nutzen (Änderungen am Ausgabeformat fallen so sofort auf).
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - name: Testwerkzeuge installieren
+        run: >-
+          dnf install -y --setopt=install_weak_deps=False
+          bats rpm-build rpm-sign gnupg2 python3 util-linux shadow-utils findutils coreutils
+
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Test-RPMs bauen und Testschlüssel importieren
+        run: |
+          tests/build-test-rpms.sh /tmp/test-rpms
+          rpmkeys --import /tmp/test-rpms/key-known.asc
+
+      - name: Bats-Tests als normaler Benutzer ausführen
+        # Die Skripte verweigern den Start als root, daher ein eigener Testbenutzer
+        run: |
+          useradd -m tester
+          cp -r "$GITHUB_WORKSPACE" /home/tester/repo
+          chown -R tester: /home/tester/repo /tmp/test-rpms
+          runuser -u tester -- env TEST_RPM_DIR=/tmp/test-rpms REQUIRE_RPM_TESTS=1 \
+            bats /home/tester/repo/tests
