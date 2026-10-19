@@ -161,14 +161,16 @@ verify_rpm() {
         return 1
     fi
 
+    # Groß-/Kleinschreibung ignorieren: RPM 4.x schreibt "Signature", RPM 6.x (ab
+    # Fedora 43) "signature", z.B. "Header OpenPGP V4 RSA/SHA256 signature, ...: NOKEY".
     sig_output=$(LC_ALL=C rpm -Kv --nodigest "$target" 2>&1 || true)
-    if echo "$sig_output" | grep -q 'Signature.*: BAD'; then
+    if echo "$sig_output" | grep -qi 'signature.*: BAD'; then
         echo "❌ Fehler: Die GPG-Signatur des RPM-Pakets ist ungültig (rpm -K). Abbruch." >&2
         rm -f "$target"
         return 1
-    elif echo "$sig_output" | grep -Eq 'Signature.*: (NOKEY|NOTTRUSTED)'; then
+    elif echo "$sig_output" | grep -Eqi 'signature.*: (NOKEY|NOTTRUSTED)'; then
         echo "⚠️ Hinweis: RPM ist signiert, der Schlüssel ist aber nicht importiert – Signatur nicht prüfbar."
-    elif echo "$sig_output" | grep -q 'Signature.*: OK'; then
+    elif echo "$sig_output" | grep -qi 'signature.*: OK'; then
         echo "🔏 GPG-Signatur des RPM-Pakets ist gültig."
     else
         echo "ℹ️ Hinweis: RPM-Paket ist nicht signiert (nur Prüfsummen geprüft)."
