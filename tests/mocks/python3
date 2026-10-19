@@ -1,0 +1,20 @@
+#!/bin/bash
+# Mock für python3: Statt die GitHub-API abzufragen, wird anhand des Repos im
+# eingebetteten Code bzw. in den Argumenten eine feste Antwort ausgegeben.
+# Steuerung: *_REMOTE (Versionen), FAIL_KEY (Teilstring, der einen Fehler auslöst)
+key="$*"
+echo "python3 ${key: -60}" >> "${MOCK_LOG:-/dev/null}"
+if [ -n "${FAIL_KEY:-}" ] && [[ "$key" == *"$FAIL_KEY"* ]]; then
+    echo "HTTPError: HTTP Error 500" >&2
+    exit 1
+fi
+case "$key" in
+    *fastfetch-cli/fastfetch*) echo "${FF_REMOTE}" ;;
+    *Moonfin-Client/Moonfin-Core*) echo "${MF_REMOTE}|https://example.invalid/moonfin.rpm" ;;
+    *LinwoodDev/butterfly*) echo "${BF_REMOTE}|https://example.invalid/butterfly.rpm" ;;
+    *LinwoodDev/Flow*) echo "${FL_REMOTE}|https://example.invalid/flow.rpm" ;;
+    *AprilNEA/OpenLogi*) echo "${OL_REMOTE}|https://example.invalid/openlogi.rpm" ;;
+    *fbraz3/GeneralsX*) echo "${GX_REMOTE}|https://example.invalid/generalsx.flatpak" ;;
+    *nextcloud-releases/talk-desktop*) echo "v${TK_REMOTE}|https://example.invalid/talk.flatpak" ;;
+    *) echo "python3-Mock: unbekannte Abfrage" >&2; exit 1 ;;
+esac

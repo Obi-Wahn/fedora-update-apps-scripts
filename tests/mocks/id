@@ -1,0 +1,7 @@
+#!/bin/bash
+# Mock für id: MOCK_ROOT=1 täuscht root vor ("id -u" = 0), sonst echtes id.
+if [ "${MOCK_ROOT:-0}" = 1 ] && [ "${1:-}" = "-u" ]; then
+    echo 0
+    exit 0
+fi
+exec /usr/bin/id "$@"

@@ -1,0 +1,21 @@
+#!/bin/bash
+# Mock für curl: Mit -o wird eine Platzhalter-Datei geschrieben, ohne -o die
+# Docker-Release-Notes-Seite ausgegeben.
+# Steuerung: CURL_FAIL (Teilstring der URL, der einen Fehler auslöst),
+#            CURL_CONTENT (Inhalt der heruntergeladenen Datei), DOCKER_REMOTE
+url="${!#}"
+out=""
+while [ $# -gt 0 ]; do
+    [ "$1" = "-o" ] && out="$2"
+    shift
+done
+echo "curl $url" >> "${MOCK_LOG:-/dev/null}"
+if [ -n "${CURL_FAIL:-}" ] && [[ "$url" == *"$CURL_FAIL"* ]]; then
+    exit 22
+fi
+if [ -z "$out" ]; then
+    echo "<a href=\"https://desktop.docker.com/linux/main/amd64/123/docker-desktop-x86_64.rpm\">RPM</a>"
+    echo "<h2 id=\"x\">${DOCKER_REMOTE}</h2>"
+    exit 0
+fi
+echo "${CURL_CONTENT:-RPMDATA $url}" > "$out"

@@ -1,0 +1,7 @@
+#!/bin/bash
+# Mock für sudo: führt den Befehl ohne Rechtewechsel aus.
+case "$1" in
+    -v) exit 0 ;;
+    -n) shift ;;
+esac
+exec "$@"

@@ -7,7 +7,7 @@ shopt -s nullglob
 
 # Nicht als root bzw. mit sudo starten: Die Eigentümer-Prüfung unten würde sonst
 # jedes Skript überspringen, und heruntergeladene Dateien würden root gehören.
-if [ "$EUID" -eq 0 ]; then
+if [ "$(id -u)" -eq 0 ]; then
     echo "❌ Fehler: Bitte nicht als root bzw. mit sudo starten. Das Skript fordert sudo-Rechte selbst an." >&2
     exit 1
 fi

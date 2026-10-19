@@ -1,0 +1,29 @@
+#!/bin/bash
+# Mock für rpm. Installierte Versionen kommen aus INST_<paketname> (Bindestriche
+# als Unterstriche), z.B. INST_linwood_butterfly=2.6.1; leer = nicht installiert.
+# Dateien, die "KAPUTT" enthalten, gelten als beschädigt. QF_FAIL=<paket> lässt
+# "rpm -q --queryformat" für dieses Paket unerwartet scheitern.
+echo "rpm $*" >> "${MOCK_LOG:-/dev/null}"
+case "$1" in
+    -qip|-K)
+        grep -q KAPUTT "${!#}" && exit 1
+        exit 0
+        ;;
+    -Kv)
+        echo "${!#}:"
+        exit 0
+        ;;
+    -q)
+        if [ "$2" = "--queryformat" ]; then pkg="$4"; else pkg="$2"; fi
+        var="INST_${pkg//-/_}"
+        version="${!var:-}"
+        [ -n "$version" ] || { echo "Paket $pkg ist nicht installiert"; exit 1; }
+        if [ "$2" = "--queryformat" ]; then
+            [ "${QF_FAIL:-}" = "$pkg" ] && exit 1
+            printf '%s' "$version"
+        else
+            echo "$pkg-$version-1.x86_64"
+        fi
+        ;;
+    *) exit 0 ;;
+esac

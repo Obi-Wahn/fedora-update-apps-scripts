@@ -1,0 +1,7 @@
+#!/bin/bash
+# Mock für uname: MOCK_ARCH ersetzt die Ausgabe von "uname -m".
+if [ -n "${MOCK_ARCH:-}" ] && [ "${1:-}" = "-m" ]; then
+    echo "$MOCK_ARCH"
+    exit 0
+fi
+exec /usr/bin/uname "$@"

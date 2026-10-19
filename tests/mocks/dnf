@@ -1,0 +1,8 @@
+#!/bin/bash
+# Mock für dnf. DNF_FAIL=<Teilstring> lässt den Aufruf scheitern.
+echo "dnf $*" >> "${MOCK_LOG:-/dev/null}"
+if [ -n "${DNF_FAIL:-}" ] && [[ "$*" == *"$DNF_FAIL"* ]]; then
+    echo "dnf-Mock: Fehler" >&2
+    exit 1
+fi
+exit 0
