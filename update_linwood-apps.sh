@@ -77,7 +77,7 @@ for APP in "${APPS[@]}"; do
         continue
     fi
 
-    echo "🔄 Update verfügbar! Starte Download..."
+    echo "🔄 Update verfügbar! Starte Installation..."
 
     if ! install_rpm_update "$PKG_NAME" "$URL" "$TARGET_RPM" "${PKG_NAME}-*.rpm"; then
         FAILED_APPS+=("$PKG_NAME")
