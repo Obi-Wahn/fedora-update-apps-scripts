@@ -53,7 +53,7 @@ if ! version_needs_update "$LOCAL_VERSION_NORMALIZED" "$LATEST_VERSION"; then
     exit 0
 fi
 
-echo "🔄 Ein Update auf Version $LATEST_VERSION ist verfügbar! Starte Download..."
+echo "🔄 Ein Update auf Version $LATEST_VERSION ist verfügbar! Starte Installation..."
 
 install_rpm_update "OpenLogi" "$LATEST_URL" "$TARGET_RPM" "openlogi-*.rpm" || exit 1
 
