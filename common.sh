@@ -4,6 +4,32 @@
 # Wichtig: Der Dateiname beginnt bewusst NICHT mit "update_", damit update_all.sh
 # diese Datei nicht fälschlich als eigenständiges Update-Skript ausführt.
 
+# Nicht als root bzw. mit sudo starten: Die Skripte fordern sudo nur für die
+# Installationsschritte selbst an. Als root würden heruntergeladene Pakete, .part-
+# und Marker-Dateien root gehören, und spätere normale Läufe könnten sie nicht mehr
+# ersetzen oder löschen.
+if [ "$EUID" -eq 0 ]; then
+    echo "❌ Fehler: Bitte nicht als root bzw. mit sudo starten. Das Skript fordert sudo-Rechte bei Bedarf selbst an." >&2
+    exit 1
+fi
+
+# Meldet unerwartete Fehler, also fehlgeschlagene Befehle ohne eigene
+# Fehlerbehandlung, mit Datei, Zeile, Befehl und Exit-Code; set -e beendet das
+# Skript danach wie gewohnt. Erwartete Fehler (in if-Bedingungen, mit "|| ...")
+# lösen den Trap nicht aus. Die Skripte setzen dafür "set -E", damit der Trap auch
+# innerhalb von Funktionen greift. Gemeldet wird nur im Hauptprozess: Scheitert ein
+# Befehl in einem Unterprozess (z.B. "$(...)") unbehandelt, meldet die Zuweisung im
+# Hauptprozess den Fehler.
+_report_unexpected_error() {
+    local rc="$1"
+    local line="$2"
+    local src="$3"
+    local cmd="$4"
+    [ "$BASH_SUBSHELL" -eq 0 ] || return 0
+    echo "❌ Unerwarteter Fehler in ${src##*/}, Zeile $line: '$cmd' (Exit-Code $rc)" >&2
+}
+trap '_report_unexpected_error "$?" "$LINENO" "${BASH_SOURCE[0]:-$0}" "$BASH_COMMAND"' ERR
+
 # Prüft, ob ein Kommandozeilenwerkzeug installiert ist; bricht das Skript sonst ab.
 require_cmd() {
     local cmd="$1"
