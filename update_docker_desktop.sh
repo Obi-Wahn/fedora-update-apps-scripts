@@ -26,7 +26,12 @@ if ! PAGE_CONTENT=$(fetch_text "$NOTES_URL"); then
 fi
 
 # 4. Den neuesten RPM-Downloadlink dynamisch auslesen
-RPM_URL=$(echo "$PAGE_CONTENT" | grep -Eo "https://desktop\.docker\.com/linux/main/${URL_ARCH}/[0-9]+/docker-desktop-${FILE_ARCH}\.rpm" | head -n 1)
+# Hinweis zu beiden Extraktionen: Bewusst "sed -n '1p'" statt "head -n 1". head
+# beendet sich nach der ersten Zeile, grep bekommt dann beim Weiterschreiben
+# SIGPIPE, und wegen pipefail scheitert die ganze Zuweisung (Exit-Code 141) -
+# je nach Seitengröße mal ja, mal nein. sed liest die Eingabe vollständig.
+# "|| true", damit "kein Treffer" in die eigene Fehlermeldung unten läuft.
+RPM_URL=$(grep -Eo "https://desktop\.docker\.com/linux/main/${URL_ARCH}/[0-9]+/docker-desktop-${FILE_ARCH}\.rpm" <<< "$PAGE_CONTENT" | sed -n '1p' || true)
 
 if [ -z "$RPM_URL" ]; then
     echo "❌ Fehler: Konnte den Fedora Download-Link für $(uname -m) in den Release Notes nicht finden." >&2
@@ -34,7 +39,7 @@ if [ -z "$RPM_URL" ]; then
 fi
 
 # 5. Versionsnummer aus dem HTML-Text extrahieren
-VERSION=$(echo "$PAGE_CONTENT" | grep -Eo '>[0-9]+\.[0-9]+\.[0-9]+<' | head -n 1 | tr -d '><')
+VERSION=$(grep -Eo '>[0-9]+\.[0-9]+\.[0-9]+<' <<< "$PAGE_CONTENT" | sed -n '1p' | tr -d '><' || true)
 
 if [ -z "$VERSION" ]; then
     echo "❌ Fehler: Konnte die Versionsnummer nicht aus der Webseite extrahieren." >&2
