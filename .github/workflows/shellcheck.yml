@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Repository auschecken
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Bash-Syntax prüfen (bash -n)
         run: |
@@ -46,7 +46,7 @@ jobs:
           bats rpm-build rpm-sign gnupg2 python3 util-linux shadow-utils findutils coreutils
 
       - name: Repository auschecken
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Test-RPMs bauen und Testschlüssel importieren
         run: |
