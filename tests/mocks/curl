@@ -16,6 +16,11 @@ fi
 if [ -z "$out" ]; then
     echo "<a href=\"https://desktop.docker.com/linux/main/amd64/123/docker-desktop-x86_64.rpm\">RPM</a>"
     echo "<h2 id=\"x\">${DOCKER_REMOTE}</h2>"
+    # DOCKER_PAGE_REPEAT=<n>: n ältere Einträge anhängen (große Seite wie im Original)
+    for ((i = 1; i <= ${DOCKER_PAGE_REPEAT:-0}; i++)); do
+        echo "<a href=\"https://desktop.docker.com/linux/main/amd64/$i/docker-desktop-x86_64.rpm\">RPM</a>"
+        echo "<h2>4.$i.0</h2>"
+    done
     exit 0
 fi
 echo "${CURL_CONTENT:-RPMDATA $url}" > "$out"

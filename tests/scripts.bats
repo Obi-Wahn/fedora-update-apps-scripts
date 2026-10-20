@@ -68,6 +68,25 @@ setup() {
     [ ! -e docker-desktop-4.95.0-x86_64.rpm ]
 }
 
+@test "Docker Desktop: große Release-Notes-Seite führt nicht zu SIGPIPE (Exit 141)" {
+    # Viele Treffer: Mit "head -n 1" scheiterte die Extraktion hier mit Exit 141.
+    DOCKER_REMOTE=4.96.0 DOCKER_PAGE_REPEAT=20000 run ./update_docker_desktop.sh
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"Unerwarteter Fehler"* ]]
+    [ "$(mock_calls 'dnf install -y .*docker-desktop-4.96.0-x86_64.rpm')" -eq 1 ]
+}
+
+@test "Docker Desktop: fehlender Download-Link ergibt eigene Fehlermeldung" {
+    PATH="$BATS_TEST_TMPDIR/leer:$PATH"
+    mkdir -p "$BATS_TEST_TMPDIR/leer"
+    printf '#!/bin/bash\necho "<html>umgebaut</html>"\n' > "$BATS_TEST_TMPDIR/leer/curl"
+    chmod +x "$BATS_TEST_TMPDIR/leer/curl"
+    run ./update_docker_desktop.sh
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Download-Link"*"nicht finden"* ]]
+    [[ "$output" != *"Unerwarteter Fehler"* ]]
+}
+
 @test "Linwood: Beta-Version (rpm-Tilde) gilt als aktuell" {
     INST_linwood_butterfly="2.7.0~rc.1" BF_REMOTE="2.7.0-rc.1" run ./update_linwood-apps.sh
     [ "$status" -eq 0 ]
