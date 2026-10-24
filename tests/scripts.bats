@@ -191,3 +191,91 @@ setup() {
     run timeout 20 bash -c './update_all.sh | cat' 3>&-
     [ "$status" -eq 0 ]
 }
+
+@test "update_all.sh --list zeigt die Programmnamen ohne sudo" {
+    run ./update_all.sh --list 3>&-
+    [ "$status" -eq 0 ]
+    [ "${#lines[@]}" -eq 8 ]
+    [[ "$output" == *"docker_desktop"* ]]
+    [[ "$output" == *"talk_desktop"* ]]
+    [[ "$output" != *"all"* ]]
+    [[ "$output" != *"Starte"* ]]
+}
+
+@test "update_all.sh --help zeigt die Hilfe" {
+    run ./update_all.sh --help 3>&-
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"--skip"* ]]
+    [[ "$output" == *"--only"* ]]
+}
+
+@test "update_all.sh --skip überspringt die genannten Programme" {
+    run ./update_all.sh --skip moonfin,GeneralsX --skip=openlogi 3>&-
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Übersprungen: moonfin (--skip)"* ]]
+    [[ "$output" == *"Übersprungen: generalsx (--skip)"* ]]
+    [[ "$output" == *"Übersprungen: OpenLogi (--skip)"* ]]
+    [[ "$output" != *"Führe aus: moonfin"* ]]
+    [[ "$output" != *"Führe aus: generalsx"* ]]
+    [[ "$output" != *"Führe aus: OpenLogi"* ]]
+    [[ "$output" == *"Führe aus: fastfetch"* ]]
+    [[ "$output" == *"Alle Update-Vorgänge wurden erfolgreich abgeschlossen"* ]]
+}
+
+@test "update_all.sh --only führt nur die genannten Programme aus" {
+    run ./update_all.sh --only fastfetch --only processing 3>&-
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Führe aus: fastfetch"* ]]
+    [[ "$output" == *"Führe aus: processing"* ]]
+    [ "$(grep -c 'Führe aus' <<< "$output")" -eq 2 ]
+    [[ "$output" != *"Übersprungen"* ]]
+}
+
+@test "update_all.sh: Ausschlussliste wird beachtet, Kommentare ignoriert" {
+    printf '# kein Docker auf diesem Rechner\ndocker_desktop\n  moonfin  # später\n\n' > skip
+    UPDATE_ALL_SKIP_FILE="$PWD/skip" run ./update_all.sh 3>&-
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Übersprungen: docker_desktop (Ausschlussliste)"* ]]
+    [[ "$output" == *"Übersprungen: moonfin (Ausschlussliste)"* ]]
+    [[ "$output" == *"Führe aus: fastfetch"* ]]
+    [[ "$output" != *"Warnung"* ]]
+}
+
+@test "update_all.sh: Standardpfad der Ausschlussliste unter XDG_CONFIG_HOME" {
+    mkdir -p cfg/fedora-update-apps
+    echo "fastfetch" > cfg/fedora-update-apps/skip
+    XDG_CONFIG_HOME="$PWD/cfg" run ./update_all.sh 3>&-
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Übersprungen: fastfetch (Ausschlussliste)"* ]]
+}
+
+@test "update_all.sh: unbekannter Name in der Ausschlussliste nur Warnung" {
+    printf 'gibtsnicht\n' > skip
+    UPDATE_ALL_SKIP_FILE="$PWD/skip" run ./update_all.sh 3>&-
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Unbekanntes Programm 'gibtsnicht'"* ]]
+    [[ "$output" == *"Alle Update-Vorgänge wurden erfolgreich abgeschlossen"* ]]
+}
+
+@test "update_all.sh: --only ignoriert die Ausschlussliste" {
+    echo "fastfetch" > skip
+    UPDATE_ALL_SKIP_FILE="$PWD/skip" run ./update_all.sh --only fastfetch 3>&-
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Führe aus: fastfetch"* ]]
+}
+
+@test "update_all.sh: unbekannter Name bei --skip bricht vor sudo ab" {
+    run ./update_all.sh --skip fastfetsch 3>&-
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Unbekanntes Programm 'fastfetsch' bei --skip"* ]]
+    [[ "$output" != *"Starte"* ]]
+}
+
+@test "update_all.sh: unbekannte Option und fehlendes Argument ergeben Exit 2" {
+    run ./update_all.sh --foo 3>&-
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Unbekannte Option '--foo'"* ]]
+    run ./update_all.sh --only 3>&-
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"--only erwartet"* ]]
+}
