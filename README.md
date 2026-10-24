@@ -58,6 +58,31 @@ chmod +x update_all.sh
 
 Dabei wird einmalig `sudo`-Zugriff angefordert und im Hintergrund wachgehalten, sodass die einzelnen Skripte nicht mehrfach nach dem Passwort fragen. Vor jeder Ausführung prüft `update_all.sh`, ob das jeweilige Skript dem aktuellen Nutzer gehört und ausführbar ist; andernfalls wird es übersprungen. Am Ende gibt es eine Zusammenfassung fehlgeschlagener Updates aus und beendet sich mit einem entsprechenden Exit-Code.
 
+### Programme überspringen
+
+Einzelne Programme lassen sich dauerhaft oder für einen Lauf ausschließen. Als Name gilt der Teil zwischen `update_` und `.sh` (z.B. `docker_desktop`, `linwood-apps`); Groß-/Kleinschreibung ist egal. `./update_all.sh --list` zeigt alle verfügbaren Namen.
+
+**Dauerhaft per Ausschlussliste:** In `~/.config/fedora-update-apps/skip` (bzw. `$XDG_CONFIG_HOME/fedora-update-apps/skip`) steht ein Programmname pro Zeile, `#` leitet Kommentare ein. Die Datei liegt bewusst außerhalb des Repos und bleibt so bei einem `git pull` erhalten. Ein anderer Pfad lässt sich per `UPDATE_ALL_SKIP_FILE` angeben. Unbekannte Namen in der Datei führen nur zu einer Warnung.
+
+```bash
+mkdir -p ~/.config/fedora-update-apps
+cat > ~/.config/fedora-update-apps/skip <<'EOF'
+# Docker Desktop nutze ich auf diesem Rechner nicht
+docker_desktop
+EOF
+```
+
+**Für einen Lauf per Option:**
+
+```bash
+./update_all.sh --skip moonfin,generalsx   # zusätzlich zur Ausschlussliste überspringen
+./update_all.sh --only fastfetch           # nur diese Programme, Ausschlussliste wird ignoriert
+./update_all.sh --list                     # verfügbare Namen anzeigen
+./update_all.sh --help
+```
+
+`--skip` und `--only` dürfen mehrfach angegeben und kombiniert werden (`--only a,b --skip b` führt nur `a` aus). Ein unbekannter Name auf der Kommandozeile bricht mit Exit-Code 2 ab, bevor `sudo` angefordert wird, damit Tippfehler auffallen. Übersprungene Programme werden im Lauf mit `⏭️` markiert und am Ende aufgelistet.
+
 ## Einzelne Skripte ausführen
 
 Jedes Skript lässt sich auch unabhängig von `update_all.sh` starten:
