@@ -16,5 +16,6 @@ case "$key" in
     *AprilNEA/OpenLogi*) echo "${OL_REMOTE}|https://example.invalid/openlogi.rpm" ;;
     *fbraz3/GeneralsX*) echo "${GX_REMOTE}|https://example.invalid/generalsx.flatpak" ;;
     *nextcloud-releases/talk-desktop*) echo "v${TK_REMOTE}|https://example.invalid/talk.flatpak" ;;
+    *processing/processing4*) echo "${PR_TAG:-processing-1434-${PR_REMOTE}}|https://example.invalid/processing.flatpak" ;;
     *) echo "python3-Mock: unbekannte Abfrage" >&2; exit 1 ;;
 esac

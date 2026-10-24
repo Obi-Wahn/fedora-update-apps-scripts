@@ -2,7 +2,7 @@
 
 [![Shell Script Checks](https://github.com/Obi-Wahn/fedora-update-apps-scripts/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/Obi-Wahn/fedora-update-apps-scripts/actions/workflows/shellcheck.yml)
 
-Eine Sammlung von Bash-Skripten, die Anwendungen unter Fedora Linux aktuell halten, deren Updates nicht (zeitnah) über die offiziellen Paketquellen (`dnf`) verfügbar sind. Jedes Skript prüft die neueste verfügbare Version (meist über die GitHub-API oder die offizielle Release-Seite), vergleicht sie mit der lokal installierten Version und installiert bei Bedarf automatisch das passende Paket (`.rpm` via `dnf`, bei GeneralsX und Nextcloud Talk Desktop ein `.flatpak`-Bundle via `flatpak`).
+Eine Sammlung von Bash-Skripten, die Anwendungen unter Fedora Linux aktuell halten, deren Updates nicht (zeitnah) über die offiziellen Paketquellen (`dnf`) verfügbar sind. Jedes Skript prüft die neueste verfügbare Version (meist über die GitHub-API oder die offizielle Release-Seite), vergleicht sie mit der lokal installierten Version und installiert bei Bedarf automatisch das passende Paket (`.rpm` via `dnf`, bei GeneralsX, Nextcloud Talk Desktop und Processing ein `.flatpak`-Bundle via `flatpak`).
 
 ## Enthaltene Updater
 
@@ -14,21 +14,23 @@ Eine Sammlung von Bash-Skripten, die Anwendungen unter Fedora Linux aktuell halt
 | `update_moonfin.sh` | [Moonfin](https://github.com/Moonfin-Client/Moonfin-Core) über die GitHub-Releases |
 | `update_OpenLogi.sh` | [OpenLogi](https://github.com/AprilNEA/OpenLogi) über die GitHub-Releases |
 | `update_generalsx.sh` | [GeneralsX](https://github.com/fbraz3/GeneralsX) (nur Zero Hour) über die GitHub-Releases — **Sonderfall:** nutzt `flatpak` statt `dnf`/`rpm`, siehe Hinweis unten |
+| `update_processing.sh` | [Processing 4](https://github.com/processing/processing4) (nur stabile Releases) über die GitHub-Releases — **Sonderfall:** nutzt `flatpak` statt `dnf`/`rpm`, siehe Hinweis unten |
 | `update_talk_desktop.sh` | [Nextcloud Talk Desktop](https://github.com/nextcloud/talk-desktop) (nur stabile Releases) über die GitHub-Releases von [nextcloud-releases/talk-desktop](https://github.com/nextcloud-releases/talk-desktop) — **Sonderfall:** nutzt `flatpak` statt `dnf`/`rpm`, siehe Hinweis unten |
 
 Alle Skripte liegen direkt im Wurzelverzeichnis und binden [`common.sh`](./common.sh) ein, das gemeinsam genutzte Funktionen bereitstellt (siehe unten). `common.sh` ist kein eigenständiger Updater; die Datei wird nur per `source` eingebunden und muss nicht ausführbar sein oder manuell gestartet werden.
 
 Für Moonfin liegt zusätzlich eine Einrichtungsanleitung bei: [`Anleitung_Moonfin_auf_Fedora_44_einrichten.md`](./Anleitung_Moonfin_auf_Fedora_44_einrichten.md).
 
-### Sonderfall: Flatpak-basierte Updater (GeneralsX, Nextcloud Talk Desktop)
+### Sonderfall: Flatpak-basierte Updater (GeneralsX, Nextcloud Talk Desktop, Processing)
 
-GeneralsX und Nextcloud Talk Desktop veröffentlichen für Linux keine `.rpm`-Pakete, sondern `.flatpak`-Bundle-Dateien (aktuell nur für x86_64). `update_generalsx.sh` und `update_talk_desktop.sh` weichen deshalb vom gemeinsamen RPM-Muster ab. Beide ermitteln nur noch Version und Download-URL (per `find_github_latest_asset()`) und überlassen den restlichen Ablauf der gemeinsamen Funktion `flatpak_update_app()` in `common.sh`:
+GeneralsX, Nextcloud Talk Desktop und Processing veröffentlichen für Linux keine `.rpm`-Pakete, sondern `.flatpak`-Bundle-Dateien (GeneralsX und Nextcloud Talk Desktop aktuell nur für x86_64, Processing für x86_64 und aarch64). `update_generalsx.sh`, `update_talk_desktop.sh` und `update_processing.sh` weichen deshalb vom gemeinsamen RPM-Muster ab. Alle drei ermitteln nur noch Version und Download-URL (GeneralsX und Talk per `find_github_latest_asset()`, Processing per eigener Abfrage, da dessen Asset-Namen die Version enthalten) und überlassen den restlichen Ablauf der gemeinsamen Funktion `flatpak_update_app()` in `common.sh`:
 
 * Installation/Update läuft über `sudo flatpak install --system --or-update`, nicht über `dnf`. Die Installation ist damit system-weit für alle Nutzer des Rechners verfügbar (und benötigt entsprechend `sudo`, genau wie die `dnf install`-Schritte der anderen Skripte).
-* Da die Bundle-Dateinamen keine Versionsnummer enthalten, merkt sich jedes Skript die zuletzt installierte Version zusätzlich in einer einfachen Marker-Datei (`.generalsxzh-installed-version` bzw. `.talk-desktop-installed-version`). Die Marker-Datei allein reicht aber nicht aus, um eine manuelle Deinstallation zu erkennen — deshalb fragt jedes Skript vor jedem Lauf zusätzlich per `flatpak_is_installed()` (`sudo flatpak info --system`) nach, ob die App tatsächlich noch installiert ist, und installiert bei Bedarf neu, selbst wenn der Marker bereits die aktuelle Version zeigt. Die Abfrage läuft bewusst schon mit `sudo`, da `flatpak info --system` ohne erhöhte Rechte auf manchen Systemen fälschlich "nicht gefunden" meldet.
+* Da die Bundle-Dateinamen keine Versionsnummer enthalten, merkt sich jedes Skript die zuletzt installierte Version zusätzlich in einer einfachen Marker-Datei (`.generalsxzh-installed-version`, `.talk-desktop-installed-version` bzw. `.processing-installed-version`). Die Marker-Datei allein reicht aber nicht aus, um eine manuelle Deinstallation zu erkennen — deshalb fragt jedes Skript vor jedem Lauf zusätzlich per `flatpak_is_installed()` (`sudo flatpak info --system`) nach, ob die App tatsächlich noch installiert ist, und installiert bei Bedarf neu, selbst wenn der Marker bereits die aktuelle Version zeigt. Die Abfrage läuft bewusst schon mit `sudo`, da `flatpak info --system` ohne erhöhte Rechte auf manchen Systemen fälschlich "nicht gefunden" meldet.
 * `flatpak_install_bundle()` fängt außerdem den Fall ab, dass `flatpak install` eine bereits exakt installierte Version als Fehler statt als No-Op behandelt (z.B. wenn zwar die App, aber noch keine Marker-Datei vorhanden ist) — das wird als Erfolg gewertet statt als Fehlschlag gemeldet.
 * GeneralsX nutzt inzwischen Semver-Tags (z.B. `1.0.2`), früher aber freie Namen wie `GeneralsX-Beta-19`. Damit beide Formen funktionieren, greift dort `validate_identifier()` (loser Format-Check) statt der strikten `validate_version()`. Nextcloud Talk Desktop nutzt normales Semver (`vX.Y.Z`, teils mit `-beta`-Suffix) und damit die strikte Validierung.
 * `update_talk_desktop.sh` bezieht ausschließlich stabile Releases: Die Abfrage läuft gegen `/releases/latest`, was Vorabversionen mit `-beta`-Suffix als GitHub-Prerelease automatisch ausschließt.
+* `update_processing.sh` fragt ebenfalls `/releases/latest` ab, Release Candidates (`-rc`) bleiben also außen vor. Die Tags haben die Form `processing-<Revision>-<Version>` (z.B. `processing-1434-4.5.6`); das Skript löst daraus die Version heraus und prüft sie mit `validate_version()`. Das Bundle wird lokal unter festem Namen (`processing-linux-x64.flatpak` bzw. `processing-linux-aarch64.flatpak`) abgelegt und installiert die App-ID `org.processing.pde`. Das ist nicht dieselbe App wie das Flathub-Paket `org.processing.processingide`; wer Processing bisher über Flathub installiert hat, hat danach beide Varianten parallel.
 
 ## Gemeinsame Funktionsweise
 
@@ -69,7 +71,7 @@ chmod +x update_fastfetch.sh
 
 * **Betriebssystem:** Fedora Linux (oder kompatible RHEL-Derivate)
 * **Architektur:** x86_64 oder aarch64
-* **Abhängigkeiten:** `bash`, `curl`, `dnf`, `rpm`, `python3`, `coreutils` (u.a. `sort -V` für den Downgrade-Schutz) (je nach Skript zusätzlich `awk`, `grep`, `sed`; `update_generalsx.sh` und `update_talk_desktop.sh` benötigen statt `dnf`/`rpm` zusätzlich `flatpak`, aktuell nur für x86_64 verfügbar)
+* **Abhängigkeiten:** `bash`, `curl`, `dnf`, `rpm`, `python3`, `coreutils` (u.a. `sort -V` für den Downgrade-Schutz) (je nach Skript zusätzlich `awk`, `grep`, `sed`; `update_generalsx.sh`, `update_talk_desktop.sh` und `update_processing.sh` benötigen statt `dnf`/`rpm` zusätzlich `flatpak`; GeneralsX und Talk sind aktuell nur für x86_64 verfügbar)
 
 ## Tests
 
