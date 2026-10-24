@@ -20,17 +20,19 @@ setup_workdir() {
     export INST_linwood_flow=0.7.0 FL_REMOTE=0.7.0
     export INST_moonfin=2.7.0 MF_REMOTE=2.7.0
     export INST_openlogi=0.8.14 OL_REMOTE=0.8.14
-    export GX_REMOTE=1.0.4 TK_REMOTE=2.3.3
-    export FLATPAK_INSTALLED="com.fbraz3.GeneralsXZH com.nextcloud.talk"
+    export GX_REMOTE=1.0.4 TK_REMOTE=2.3.3 PR_REMOTE=4.5.6
+    export FLATPAK_INSTALLED="com.fbraz3.GeneralsXZH com.nextcloud.talk org.processing.pde"
     export MOCK_ARCH=x86_64
 
     echo "$GX_REMOTE" > "$WORK/.generalsxzh-installed-version"
     echo "$TK_REMOTE" > "$WORK/.talk-desktop-installed-version"
+    echo "$PR_REMOTE" > "$WORK/.processing-installed-version"
     local f
     for f in fastfetch-2.70.0-linux-amd64.rpm docker-desktop-4.95.0-x86_64.rpm \
         linwood-butterfly-2.6.1-linux-x86_64.rpm linwood-flow-0.7.0-linux-x86_64.rpm \
         moonfin-2.7.0-x86_64.rpm openlogi-0.8.14-linux-amd64.rpm \
-        Linux-GeneralsXZH.flatpak Nextcloud.Talk-linux-x64.flatpak; do
+        Linux-GeneralsXZH.flatpak Nextcloud.Talk-linux-x64.flatpak \
+        processing-linux-x64.flatpak; do
         echo "lokale Kopie" > "$WORK/$f"
     done
     cd "$WORK" || return 1

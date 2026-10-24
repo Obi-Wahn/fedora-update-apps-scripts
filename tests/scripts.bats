@@ -22,10 +22,10 @@ setup() {
     [ "$(mock_calls '^flatpak install')" -eq 0 ]
 }
 
-@test "update_all.sh: führt alle sieben Updater aus" {
+@test "update_all.sh: führt alle acht Updater aus" {
     run ./update_all.sh 3>&-
     local name
-    for name in docker_desktop fastfetch generalsx linwood-apps moonfin OpenLogi talk_desktop; do
+    for name in docker_desktop fastfetch generalsx linwood-apps moonfin OpenLogi processing talk_desktop; do
         [[ "$output" == *"Führe aus: $name"* ]] || { echo "fehlt: $name"; return 1; }
     done
 }
@@ -128,6 +128,36 @@ setup() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"nicht (mehr) installiert"* ]]
     [ "$(mock_calls 'flatpak install --system --or-update -y .*Nextcloud.Talk-linux-x64.flatpak')" -eq 1 ]
+}
+
+@test "Processing: neue Version wird installiert, Marker aktualisiert" {
+    PR_REMOTE=4.5.7 run ./update_processing.sh
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Neueste verfügbare Version:  4.5.7"* ]]
+    [ "$(mock_calls 'flatpak install --system --or-update -y .*processing-linux-x64.flatpak')" -eq 1 ]
+    [ "$(cat .processing-installed-version)" = "4.5.7" ]
+}
+
+@test "Processing: bereits aktuell, keine Installation" {
+    run ./update_processing.sh
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Processing ist bereits aktuell (4.5.6)"* ]]
+    [ "$(mock_calls '^flatpak install')" -eq 0 ]
+}
+
+@test "Processing: aarch64 nutzt das aarch64-Bundle" {
+    MOCK_ARCH=aarch64 PR_REMOTE=4.5.7 run ./update_processing.sh
+    [ "$status" -eq 0 ]
+    [ "$(mock_calls ' -linux-aarch64.flatpak$')" -eq 1 ]
+    [ "$(mock_calls 'flatpak install --system --or-update -y .*processing-linux-aarch64.flatpak')" -eq 1 ]
+}
+
+@test "Processing: unerwartetes Tag-Format ergibt eigene Fehlermeldung" {
+    PR_TAG="v4.5.7" run ./update_processing.sh
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Release-Tag 'v4.5.7' hat ein unerwartetes Format"* ]]
+    [[ "$output" != *"Unerwarteter Fehler"* ]]
+    [ "$(mock_calls '^flatpak install')" -eq 0 ]
 }
 
 @test "Flatpak: fehlgeschlagener Download lässt die lokale Kopie unverändert" {
