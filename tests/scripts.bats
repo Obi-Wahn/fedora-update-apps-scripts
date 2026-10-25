@@ -22,10 +22,10 @@ setup() {
     [ "$(mock_calls '^flatpak install')" -eq 0 ]
 }
 
-@test "update_all.sh: führt alle acht Updater aus" {
+@test "update_all.sh: führt alle neun Updater aus" {
     run ./update_all.sh 3>&-
     local name
-    for name in docker_desktop fastfetch generalsx linwood-apps moonfin OpenLogi processing talk_desktop; do
+    for name in docker_desktop fastfetch generalsx linwood_butterfly linwood_flow moonfin OpenLogi processing talk_desktop; do
         [[ "$output" == *"Führe aus: $name"* ]] || { echo "fehlt: $name"; return 1; }
     done
 }
@@ -87,24 +87,64 @@ setup() {
     [[ "$output" != *"Unerwarteter Fehler"* ]]
 }
 
-@test "Linwood: Beta-Version (rpm-Tilde) gilt als aktuell" {
-    INST_linwood_butterfly="2.7.0~rc.1" BF_REMOTE="2.7.0-rc.1" run ./update_linwood-apps.sh
+@test "Linwood Butterfly: Beta-Version (rpm-Tilde) gilt als aktuell" {
+    INST_linwood_butterfly="2.7.0~rc.1" BF_REMOTE="2.7.0-rc.1" run ./update_linwood_butterfly.sh
     [ "$status" -eq 0 ]
     [ "$(mock_calls '^dnf')" -eq 0 ]
 }
 
-@test "Linwood: dnf-Fehler bei einer App, die andere wird trotzdem aktualisiert" {
-    BF_REMOTE=2.6.2 FL_REMOTE=0.8.0 DNF_FAIL=linwood-butterfly run ./update_linwood-apps.sh
+@test "Linwood Butterfly: neue Version wird installiert, Flow bleibt unberührt" {
+    BF_REMOTE=2.6.2 FL_REMOTE=0.8.0 run ./update_linwood_butterfly.sh
+    [ "$status" -eq 0 ]
+    [ "$(mock_calls 'dnf install -y .*linwood-butterfly-2.6.2-linux-x86_64.rpm')" -eq 1 ]
+    [ "$(mock_calls 'LinwoodDev/Flow')" -eq 0 ]
+    [ -e linwood-butterfly-2.6.2-linux-x86_64.rpm ]
+    [ ! -e linwood-butterfly-2.6.1-linux-x86_64.rpm ]
+    [ -e linwood-flow-0.7.0-linux-x86_64.rpm ]
+}
+
+@test "Linwood Flow: nicht installiert, wird installiert" {
+    INST_linwood_flow="" run ./update_linwood_flow.sh
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Installierte Version: nicht installiert"* ]]
+    [ "$(mock_calls 'dnf install -y .*linwood-flow-0.7.0-linux-x86_64.rpm')" -eq 1 ]
+}
+
+@test "Linwood Flow: lokale Kopie fehlt, wird ohne Installation nachgeladen" {
+    rm linwood-flow-0.7.0-linux-x86_64.rpm
+    run ./update_linwood_flow.sh
+    [ "$status" -eq 0 ]
+    [ -e linwood-flow-0.7.0-linux-x86_64.rpm ]
+    [ "$(mock_calls '^dnf')" -eq 0 ]
+}
+
+@test "Linwood Flow: API-Fehler führt zu Exit 1" {
+    FAIL_KEY=LinwoodDev/Flow run ./update_linwood_flow.sh
     [ "$status" -eq 1 ]
-    [[ "$output" == *"nicht aktualisiert werden: linwood-butterfly"* ]]
+    [[ "$output" == *"Konnte Release-Infos für Linwood Flow nicht abrufen"* ]]
+    [[ "$output" != *"Unerwarteter Fehler"* ]]
+}
+
+@test "update_all.sh: dnf-Fehler bei Butterfly, Flow wird trotzdem aktualisiert" {
+    BF_REMOTE=2.6.2 FL_REMOTE=0.8.0 DNF_FAIL=linwood-butterfly run ./update_all.sh 3>&-
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"   - linwood_butterfly"* ]]
+    [[ "$output" != *"   - linwood_flow"* ]]
     [ "$(mock_calls 'dnf install -y .*linwood-flow-0.8.0')" -eq 1 ]
+}
+
+@test "update_all.sh --skip linwood_flow lässt Butterfly laufen" {
+    run ./update_all.sh --skip linwood_flow 3>&-
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Übersprungen: linwood_flow (--skip)"* ]]
+    [[ "$output" == *"Führe aus: linwood_butterfly"* ]]
 }
 
 @test "update_all.sh: Fehler werden gesammelt und am Ende gemeldet" {
     BF_REMOTE=2.6.2 DNF_FAIL=linwood-butterfly FAIL_KEY=AprilNEA run ./update_all.sh 3>&-
     [ "$status" -eq 1 ]
     [[ "$output" == *"   - OpenLogi"* ]]
-    [[ "$output" == *"   - linwood-apps"* ]]
+    [[ "$output" == *"   - linwood_butterfly"* ]]
     [[ "$output" == *"Führe aus: talk_desktop"* ]]
     [[ "$output" != *"Unerwarteter Fehler"* ]]
 }
@@ -195,9 +235,11 @@ setup() {
 @test "update_all.sh --list zeigt die Programmnamen ohne sudo" {
     run ./update_all.sh --list 3>&-
     [ "$status" -eq 0 ]
-    [ "${#lines[@]}" -eq 8 ]
+    [ "${#lines[@]}" -eq 9 ]
     [[ "$output" == *"docker_desktop"* ]]
     [[ "$output" == *"talk_desktop"* ]]
+    [[ "$output" == *"linwood_butterfly"* ]]
+    [[ "$output" == *"linwood_flow"* ]]
     [[ "$output" != *"all"* ]]
     [[ "$output" != *"Starte"* ]]
 }

@@ -10,7 +10,8 @@ Eine Sammlung von Bash-Skripten, die Anwendungen unter Fedora Linux aktuell halt
 | --- | --- |
 | `update_fastfetch.sh` | [Fastfetch](https://github.com/fastfetch-cli/fastfetch) über die GitHub-Releases |
 | `update_docker_desktop.sh` | [Docker Desktop](https://www.docker.com/products/docker-desktop/) über die offiziellen Release Notes |
-| `update_linwood-apps.sh` | [Linwood Butterfly](https://github.com/LinwoodDev/butterfly) & [Linwood Flow](https://github.com/LinwoodDev/Flow) über die GitHub-Releases |
+| `update_linwood_butterfly.sh` | [Linwood Butterfly](https://github.com/LinwoodDev/butterfly) über die GitHub-Releases |
+| `update_linwood_flow.sh` | [Linwood Flow](https://github.com/LinwoodDev/Flow) über die GitHub-Releases |
 | `update_moonfin.sh` | [Moonfin](https://github.com/Moonfin-Client/Moonfin-Core) über die GitHub-Releases |
 | `update_OpenLogi.sh` | [OpenLogi](https://github.com/AprilNEA/OpenLogi) über die GitHub-Releases |
 | `update_generalsx.sh` | [GeneralsX](https://github.com/fbraz3/GeneralsX) (nur Zero Hour) über die GitHub-Releases — **Sonderfall:** nutzt `flatpak` statt `dnf`/`rpm`, siehe Hinweis unten |
@@ -60,7 +61,9 @@ Dabei wird einmalig `sudo`-Zugriff angefordert und im Hintergrund wachgehalten, 
 
 ### Programme überspringen
 
-Einzelne Programme lassen sich dauerhaft oder für einen Lauf ausschließen. Als Name gilt der Teil zwischen `update_` und `.sh` (z.B. `docker_desktop`, `linwood-apps`); Groß-/Kleinschreibung ist egal. `./update_all.sh --list` zeigt alle verfügbaren Namen.
+Einzelne Programme lassen sich dauerhaft oder für einen Lauf ausschließen. Als Name gilt der Teil zwischen `update_` und `.sh` (z.B. `docker_desktop`, `linwood_flow`); Groß-/Kleinschreibung ist egal. `./update_all.sh --list` zeigt alle verfügbaren Namen.
+
+> **Hinweis:** Linwood Butterfly und Linwood Flow hatten früher ein gemeinsames Skript (`update_linwood-apps.sh`). Steht in deiner Ausschlussliste noch `linwood-apps`, wird dieser Eintrag jetzt mit einer Warnung ignoriert; ersetze ihn durch `linwood_butterfly` und/oder `linwood_flow`.
 
 **Dauerhaft per Ausschlussliste:** In `~/.config/fedora-update-apps/skip` (bzw. `$XDG_CONFIG_HOME/fedora-update-apps/skip`) steht ein Programmname pro Zeile, `#` leitet Kommentare ein. Die Datei liegt bewusst außerhalb des Repos und bleibt so bei einem `git pull` erhalten. Ein anderer Pfad lässt sich per `UPDATE_ALL_SKIP_FILE` angeben. Unbekannte Namen in der Datei führen nur zu einer Warnung.
 
