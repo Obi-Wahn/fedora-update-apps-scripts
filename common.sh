@@ -329,6 +329,48 @@ install_rpm_update() {
     cleanup_old_rpms "$(dirname "$target")" "$name_pattern" "$(basename "$target")" || true
 }
 
+# Gemeinsamer Ablauf der RPM-Updater mit Versionsabgleich über rpm -q: installierte
+# Version ermitteln und normalisieren, mit der abgerufenen Version vergleichen
+# (inkl. Downgrade-Schutz), bei aktueller Version nur die lokale RPM-Sicherung
+# sicherstellen, sonst per install_rpm_update() installieren. Version und
+# Download-URL ermittelt der Aufrufer. Gibt bei Fehlschlag 1 zurück
+# (Aufrufer: "... || exit 1").
+# Nutzung: rpm_update_app <Anzeigename> <Paketname> <Version> <Download-URL> <Ziel-RPM> <Muster alter RPMs>
+rpm_update_app() {
+    local name="$1"
+    local pkg_name="$2"
+    local version="$3"
+    local url="$4"
+    local target="$5"
+    local name_pattern="$6"
+
+    local local_version=""
+    local local_version_normalized=""
+    if rpm -q "$pkg_name" >/dev/null 2>&1; then
+        local_version=$(rpm -q --queryformat '%{VERSION}' "$pkg_name")
+        local_version_normalized=$(normalize_version "$local_version")
+    fi
+
+    echo "📦 Installierte Version: ${local_version:-nicht installiert}"
+    echo "🌐 Neueste Version:      ${version}"
+
+    if ! version_needs_update "$local_version_normalized" "$version"; then
+        echo "✅ $name ist bereits aktuell. Es ist kein Update nötig."
+        # Auch ohne anstehendes Update immer eine lokale RPM-Kopie der aktuellen Version sicherstellen
+        if [ "$local_version_normalized" == "$version" ]; then
+            ensure_local_backup "$url" "$target" "$(dirname "$target")" "$name_pattern" || true
+        fi
+        return 0
+    fi
+
+    echo "🔄 Update auf Version $version verfügbar! Starte Installation..."
+    install_rpm_update "$name" "$url" "$target" "$name_pattern" || return 1
+
+    echo "------------------------------------------------"
+    echo "✅ Installation von $name $version erfolgreich abgeschlossen!"
+    echo "------------------------------------------------"
+}
+
 # Räumt die unvollständige Zwischendatei ("<Ziel>.part", siehe download_file) auf,
 # falls der Download per Strg+C unterbrochen wird. Die eigentliche Zieldatei wird
 # dabei nicht angefasst. clear_download_trap() nach dem Download aufrufen, damit
