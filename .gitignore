@@ -6,3 +6,6 @@
 
 # Marker-Dateien der Flatpak-Skripte (zuletzt installierte Version/Release-Tag)
 .*-installed-version
+
+# Lokale Claude-Code-Einstellungen (können freigegebene Befehle samt Zugangsdaten enthalten)
+.claude/settings.local.json
