@@ -397,7 +397,11 @@ flatpak_is_installed() {
     sudo flatpak info --system "$app_id" >/dev/null 2>&1
 }
 
-# Installiert/aktualisiert ein Flatpak-Bundle system-weit. Schlägt der
+# Installiert/aktualisiert ein Flatpak-Bundle system-weit (/var/lib/flatpak).
+# Bewusst ohne sudo: flatpak holt sich die Rechte selbst über polkit (Passwort-
+# abfrage im Terminal bzw. als Dialog). Mit sudo prüft flatpak nach der
+# Installation die stark reduzierte Umgebung von root und warnt fälschlich,
+# dass /var/lib/flatpak/exports/share nicht in XDG_DATA_DIRS liegt. Schlägt der
 # eigentliche Install-Befehl fehl, aber die App ist laut flatpak_is_installed()
 # trotzdem vorhanden (z.B. weil flatpak das erneute Installieren exakt derselben
 # bereits installierten Version/Commit als Fehler statt als No-Op behandelt),
@@ -405,7 +409,7 @@ flatpak_is_installed() {
 flatpak_install_bundle() {
     local target="$1"
     local app_id="$2"
-    if sudo flatpak install --system --or-update -y "$target"; then
+    if flatpak install --system --or-update -y "$target"; then
         return 0
     fi
     if flatpak_is_installed "$app_id"; then
@@ -498,7 +502,7 @@ flatpak_update_app() {
     fi
     clear_download_trap
 
-    echo "⚙️ Installiere $name ($app_id) via flatpak (System-Installation, fordert evtl. sudo an)..."
+    echo "⚙️ Installiere $name ($app_id) via flatpak (System-Installation, fragt evtl. per polkit nach dem Passwort)..."
     if ! flatpak_install_bundle "$target" "$app_id"; then
         echo "❌ Fehler: flatpak install fehlgeschlagen." >&2
         return 1
