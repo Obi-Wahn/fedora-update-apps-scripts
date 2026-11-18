@@ -1,5 +1,9 @@
 #!/bin/bash
-# Mock für sudo: führt den Befehl ohne Rechtewechsel aus.
+# Mock für sudo: führt den Befehl ohne Rechtewechsel aus. Protokolliert nur
+# Befehl und Unterbefehl (z.B. "sudo flatpak install"), damit Tests prüfen
+# können, was mit sudo läuft, ohne dass Muster wie 'dnf install -y ...' den
+# sudo-Eintrag zusätzlich zum Eintrag des eigentlichen Mocks mitzählen.
+echo "sudo ${1:-} ${2:-}" >> "${MOCK_LOG:-/dev/null}"
 case "$1" in
     -v) exit 0 ;;
     -n) shift ;;

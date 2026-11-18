@@ -163,6 +163,13 @@ setup() {
     [ "$(cat .generalsxzh-installed-version)" = "1.0.5" ]
 }
 
+@test "Flatpak: Installation läuft ohne sudo (polkit), damit keine XDG_DATA_DIRS-Warnung von root kommt" {
+    GX_REMOTE=1.0.5 run ./update_generalsx.sh
+    [ "$status" -eq 0 ]
+    [ "$(mock_calls '^flatpak install --system')" -eq 1 ]
+    [ "$(mock_calls '^sudo flatpak install')" -eq 0 ]
+}
+
 @test "Talk: Marker aktuell, App aber deinstalliert, wird neu installiert" {
     FLATPAK_INSTALLED="com.fbraz3.GeneralsXZH" run ./update_talk_desktop.sh
     [ "$status" -eq 0 ]
