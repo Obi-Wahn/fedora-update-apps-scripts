@@ -397,25 +397,53 @@ flatpak_is_installed() {
     sudo flatpak info --system "$app_id" >/dev/null 2>&1
 }
 
+# Gibt die installierte Version (Feld "Version" aus den AppStream-Daten) einer
+# Flatpak-App im System-Scope aus, leer wenn unbekannt oder nicht installiert.
+# LC_ALL=C, weil flatpak die Feldnamen sonst übersetzt. Kein "exit" in awk,
+# damit flatpak nicht per SIGPIPE (Exit 141) abbricht.
+flatpak_installed_version() {
+    local app_id="$1"
+    sudo env LC_ALL=C flatpak info --system "$app_id" 2>/dev/null \
+        | awk -F': *' '/^[[:space:]]*Version:/ && !found { print $2; found = 1 }' || true
+}
+
+# Ergänzt XDG_DATA_DIRS um /var/lib/flatpak/exports/share, falls nötig. Ist die
+# Variable leer, gilt der XDG-Standard /usr/local/share:/usr/share.
+flatpak_xdg_data_dirs() {
+    local dirs="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+    case ":$dirs:" in
+        *:/var/lib/flatpak/exports/share:*|*:/var/lib/flatpak/exports/share/:*) ;;
+        *) dirs="$dirs:/var/lib/flatpak/exports/share" ;;
+    esac
+    echo "$dirs"
+}
+
 # Installiert/aktualisiert ein Flatpak-Bundle system-weit (/var/lib/flatpak).
-# Bewusst ohne sudo: flatpak holt sich die Rechte selbst über polkit (Passwort-
-# abfrage im Terminal bzw. als Dialog). Mit sudo prüft flatpak nach der
-# Installation die stark reduzierte Umgebung von root und warnt fälschlich,
-# dass /var/lib/flatpak/exports/share nicht in XDG_DATA_DIRS liegt. Schlägt der
-# eigentliche Install-Befehl fehl, aber die App ist laut flatpak_is_installed()
-# trotzdem vorhanden (z.B. weil flatpak das erneute Installieren exakt derselben
-# bereits installierten Version/Commit als Fehler statt als No-Op behandelt),
-# wird das als Erfolg gewertet.
+# Läuft über sudo (wie dnf, nutzt also den sudo-Keepalive von update_all.sh).
+# Ohne sudo verweigert polkit die Bundle-Installation je nach Sitzung mit
+# "Flatpak system operation InstallBundle not allowed for user". Damit flatpak
+# unter sudo nicht fälschlich warnt, /var/lib/flatpak/exports/share fehle in
+# XDG_DATA_DIRS (root hat eine stark reduzierte Umgebung), wird XDG_DATA_DIRS
+# des Nutzers (ergänzt um diesen Pfad) an flatpak durchgereicht.
+# Schlägt der Install-Befehl fehl, gilt das nur dann als Erfolg, wenn danach
+# nachweislich genau die Zielversion installiert ist (z.B. weil flatpak das
+# erneute Installieren derselben Version als Fehler statt als No-Op behandelt).
+# Nutzung: flatpak_install_bundle <Bundle-Datei> <App-ID> <Zielversion>
 flatpak_install_bundle() {
     local target="$1"
     local app_id="$2"
-    if flatpak install --system --or-update -y "$target"; then
+    local version="$3"
+    if sudo env "XDG_DATA_DIRS=$(flatpak_xdg_data_dirs)" \
+            flatpak install --system --or-update -y "$target"; then
         return 0
     fi
-    if flatpak_is_installed "$app_id"; then
-        echo "ℹ️ flatpak meldete einen Fehler, die App ist aber bereits in der aktuellen Version installiert."
+    local now_installed
+    now_installed=$(flatpak_installed_version "$app_id")
+    if [ -n "$now_installed" ] && [ "$now_installed" == "$version" ]; then
+        echo "ℹ️ flatpak meldete einen Fehler, die App ist aber bereits in der Zielversion $version installiert."
         return 0
     fi
+    echo "❌ Installiert ist weiterhin: ${now_installed:-unbekannte Version}." >&2
     return 1
 }
 
@@ -502,8 +530,8 @@ flatpak_update_app() {
     fi
     clear_download_trap
 
-    echo "⚙️ Installiere $name ($app_id) via flatpak (System-Installation, fragt evtl. per polkit nach dem Passwort)..."
-    if ! flatpak_install_bundle "$target" "$app_id"; then
+    echo "⚙️ Installiere $name ($app_id) via flatpak (System-Installation, fordert evtl. sudo an)..."
+    if ! flatpak_install_bundle "$target" "$app_id" "$version"; then
         echo "❌ Fehler: flatpak install fehlgeschlagen." >&2
         return 1
     fi

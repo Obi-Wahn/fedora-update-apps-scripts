@@ -1,9 +1,17 @@
 #!/bin/bash
 # Mock für flatpak. FLATPAK_INSTALLED enthält die installierten App-IDs
 # (durch Leerzeichen getrennt). FLATPAK_FAIL=1 lässt "install" scheitern.
+# FLATPAK_VERSION ist die Version, die "info" für installierte Apps meldet.
 echo "flatpak $*" >> "${MOCK_LOG:-/dev/null}"
 case "$1" in
-    info) [[ " ${FLATPAK_INSTALLED:-} " == *" ${!#} "* ]] ;;
-    install) [ "${FLATPAK_FAIL:-0}" != 1 ] ;;
+    info)
+        [[ " ${FLATPAK_INSTALLED:-} " == *" ${!#} "* ]] || exit 1
+        echo "        ID: ${!#}"
+        [ -z "${FLATPAK_VERSION:-}" ] || echo "   Version: $FLATPAK_VERSION"
+        ;;
+    install)
+        echo "flatpak-env XDG_DATA_DIRS=${XDG_DATA_DIRS:-}" >> "${MOCK_LOG:-/dev/null}"
+        [ "${FLATPAK_FAIL:-0}" != 1 ]
+        ;;
     *) exit 0 ;;
 esac
