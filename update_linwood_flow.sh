@@ -1,4 +1,5 @@
 #!/bin/bash
+# Pakettyp: RPM
 
 # Striktes Fehlermanagement
 set -Eeuo pipefail

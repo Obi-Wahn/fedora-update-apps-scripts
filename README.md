@@ -6,17 +6,19 @@ Eine Sammlung von Bash-Skripten, die Anwendungen unter Fedora Linux aktuell halt
 
 ## Enthaltene Updater
 
-| Skript | Aktualisiert |
-| --- | --- |
-| `update_fastfetch.sh` | [Fastfetch](https://github.com/fastfetch-cli/fastfetch) über die GitHub-Releases |
-| `update_docker_desktop.sh` | [Docker Desktop](https://www.docker.com/products/docker-desktop/) über die offiziellen Release Notes |
-| `update_linwood_butterfly.sh` | [Linwood Butterfly](https://github.com/LinwoodDev/butterfly) über die GitHub-Releases |
-| `update_linwood_flow.sh` | [Linwood Flow](https://github.com/LinwoodDev/Flow) über die GitHub-Releases |
-| `update_moonfin.sh` | [Moonfin](https://github.com/Moonfin-Client/Moonfin-Core) über die GitHub-Releases |
-| `update_OpenLogi.sh` | [OpenLogi](https://github.com/AprilNEA/OpenLogi) über die GitHub-Releases |
-| `update_generalsx.sh` | [GeneralsX](https://github.com/fbraz3/GeneralsX) (nur Zero Hour) über die GitHub-Releases — **Sonderfall:** nutzt `flatpak` statt `dnf`/`rpm`, siehe Hinweis unten |
-| `update_processing.sh` | [Processing 4](https://github.com/processing/processing4) (nur stabile Releases) über die GitHub-Releases — **Sonderfall:** nutzt `flatpak` statt `dnf`/`rpm`, siehe Hinweis unten |
-| `update_talk_desktop.sh` | [Nextcloud Talk Desktop](https://github.com/nextcloud/talk-desktop) (nur stabile Releases) über die GitHub-Releases von [nextcloud-releases/talk-desktop](https://github.com/nextcloud-releases/talk-desktop) — **Sonderfall:** nutzt `flatpak` statt `dnf`/`rpm`, siehe Hinweis unten |
+| Skript | Pakettyp | Aktualisiert |
+| --- | --- | --- |
+| `update_fastfetch.sh` | **RPM** | [Fastfetch](https://github.com/fastfetch-cli/fastfetch) über die GitHub-Releases |
+| `update_docker_desktop.sh` | **RPM** | [Docker Desktop](https://www.docker.com/products/docker-desktop/) über die offiziellen Release Notes |
+| `update_linwood_butterfly.sh` | **RPM** | [Linwood Butterfly](https://github.com/LinwoodDev/butterfly) über die GitHub-Releases |
+| `update_linwood_flow.sh` | **RPM** | [Linwood Flow](https://github.com/LinwoodDev/Flow) über die GitHub-Releases |
+| `update_moonfin.sh` | **RPM** | [Moonfin](https://github.com/Moonfin-Client/Moonfin-Core) über die GitHub-Releases |
+| `update_OpenLogi.sh` | **RPM** | [OpenLogi](https://github.com/AprilNEA/OpenLogi) über die GitHub-Releases |
+| `update_generalsx.sh` | **Flatpak** | [GeneralsX](https://github.com/fbraz3/GeneralsX) (nur Zero Hour) über die GitHub-Releases (siehe Hinweis unten) |
+| `update_processing.sh` | **Flatpak** | [Processing 4](https://github.com/processing/processing4) (nur stabile Releases) über die GitHub-Releases (siehe Hinweis unten) |
+| `update_talk_desktop.sh` | **Flatpak** | [Nextcloud Talk Desktop](https://github.com/nextcloud/talk-desktop) (nur stabile Releases) über die GitHub-Releases von [nextcloud-releases/talk-desktop](https://github.com/nextcloud-releases/talk-desktop) (siehe Hinweis unten) |
+
+**Pakettyp** sagt, in welcher Form das Programm installiert wird: **RPM** heißt `.rpm`-Paket über `dnf`, **Flatpak** heißt `.flatpak`-Bundle über `flatpak` (system-weit). Andere Formen wie AppImage, `tar.gz`-Archiv oder einzelne Binärdatei nutzt derzeit kein Skript. Jedes Skript nennt seinen Typ zusätzlich in der zweiten Zeile (`# Pakettyp: RPM` bzw. `# Pakettyp: Flatpak`); `update_all.sh` liest diese Zeile und zeigt den Typ beim Start jedes Updaters an, z.B. `🔄 Führe aus: processing (Flatpak)`. Fehlt die Zeile in einem neuen Skript, erscheint nur der Name.
 
 Alle Skripte liegen direkt im Wurzelverzeichnis und binden [`common.sh`](./common.sh) ein, das gemeinsam genutzte Funktionen bereitstellt (siehe unten). `common.sh` ist kein eigenständiger Updater; die Datei wird nur per `source` eingebunden und muss nicht ausführbar sein oder manuell gestartet werden.
 
@@ -57,7 +59,7 @@ chmod +x update_all.sh
 ./update_all.sh
 ```
 
-Dabei wird einmalig `sudo`-Zugriff angefordert und im Hintergrund wachgehalten, sodass die einzelnen Skripte nicht mehrfach nach dem Passwort fragen. Vor jeder Ausführung prüft `update_all.sh`, ob das jeweilige Skript dem aktuellen Nutzer gehört und ausführbar ist; andernfalls wird es übersprungen. Am Ende gibt es eine Zusammenfassung fehlgeschlagener Updates aus und beendet sich mit einem entsprechenden Exit-Code.
+Dabei wird einmalig `sudo`-Zugriff angefordert und im Hintergrund wachgehalten, sodass die einzelnen Skripte nicht mehrfach nach dem Passwort fragen. Vor jedem Programm steht dessen Pakettyp in der Ausgabe (z.B. `🔄 Führe aus: fastfetch (RPM)`). Vor jeder Ausführung prüft `update_all.sh`, ob das jeweilige Skript dem aktuellen Nutzer gehört und ausführbar ist; andernfalls wird es übersprungen. Am Ende gibt es eine Zusammenfassung fehlgeschlagener Updates aus und beendet sich mit einem entsprechenden Exit-Code.
 
 ### Programme überspringen
 
@@ -108,7 +110,7 @@ Bei jedem Pull Request und jedem Push auf `main` laufen in GitHub Actions automa
 * **Syntax und ShellCheck** (`bash -n`, `shellcheck -x`) für alle Skripte.
 * **Bats-Tests** (Ordner [`tests/`](./tests)) im aktuellen Fedora-Container:
   * `common.bats` – Hilfsfunktionen aus `common.sh` (Versionsvergleich, Downloads mit `.part`-Datei, Aufräumen, RPM-Prüfung, root-Sperre, ERR-Trap).
-  * `scripts.bats` – Abläufe der Update-Skripte und von `update_all.sh` (Update, bereits aktuell, Fehlerfälle). `dnf`, `rpm`, `curl`, `flatpak`, `sudo` und die GitHub-Abfragen werden dabei durch Attrappen aus [`tests/mocks/`](./tests/mocks) ersetzt; es wird nichts installiert oder heruntergeladen.
+  * `scripts.bats` – Abläufe der Update-Skripte und von `update_all.sh` (Update, bereits aktuell, Fehlerfälle, Anzeige des Pakettyps). `dnf`, `rpm`, `curl`, `flatpak`, `sudo` und die GitHub-Abfragen werden dabei durch Attrappen aus [`tests/mocks/`](./tests/mocks) ersetzt; es wird nichts installiert oder heruntergeladen.
   * `rpm.bats` – `verify_rpm()` gegen das **echte** `rpm` der aktuellen Fedora-Version, mit Test-Paketen aus [`tests/build-test-rpms.sh`](./tests/build-test-rpms.sh) (unsigniert, gültig signiert, unbekannter Schlüssel, manipulierte Signatur, beschädigter Inhalt). So fallen Änderungen am Ausgabeformat von `rpm` sofort auf.
 
 Lokal lassen sich die Tests mit installiertem `bats` als normaler Benutzer starten (`rpm.bats` wird ohne vorbereitete Test-Pakete übersprungen):

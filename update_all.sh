@@ -59,6 +59,19 @@ clean_name() {
     echo "${name%.sh}"
 }
 
+# Pakettyp aus der Kopfzeile "# Pakettyp: ..." eines Skripts lesen (z.B. RPM oder
+# Flatpak). Gibt nichts aus, wenn die Zeile fehlt. Bewusst ohne "grep | head",
+# damit unter "set -o pipefail" kein SIGPIPE (Exit 141) entstehen kann.
+package_type() {
+    local line
+    while IFS= read -r line || [ -n "$line" ]; do
+        if [[ "$line" =~ ^\#\ Pakettyp:[[:space:]]*([^[:space:]].*)$ ]]; then
+            echo "${BASH_REMATCH[1]}"
+            return 0
+        fi
+    done < "$1"
+}
+
 # Alle Programmnamen (ohne das Master-Skript) einsammeln
 AVAILABLE=()
 for script in "$SCRIPT_DIR"/update_*.sh; do
@@ -208,7 +221,8 @@ for script in "$SCRIPT_DIR"/update_*.sh; do
         continue
     fi
 
-    echo "🔄 Führe aus: $CLEAN_NAME"
+    PKG_TYPE=$(package_type "$script" 2>/dev/null || true)
+    echo "🔄 Führe aus: $CLEAN_NAME${PKG_TYPE:+ ($PKG_TYPE)}"
 
     # Sicherheitsprüfung: Gehört das Skript dem aktuellen Nutzer?
     if [ ! -O "$script" ]; then
