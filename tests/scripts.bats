@@ -30,6 +30,34 @@ setup() {
     done
 }
 
+@test "update_all.sh: zeigt den Pakettyp jedes Updaters an" {
+    run ./update_all.sh 3>&-
+    [ "$status" -eq 0 ]
+    local name
+    for name in docker_desktop fastfetch linwood_butterfly linwood_flow moonfin OpenLogi; do
+        [[ "$output" == *"Führe aus: $name (RPM)"* ]] || { echo "falsch: $name"; return 1; }
+    done
+    for name in generalsx processing talk_desktop; do
+        [[ "$output" == *"Führe aus: $name (Flatpak)"* ]] || { echo "falsch: $name"; return 1; }
+    done
+}
+
+@test "update_all.sh: Skript ohne Pakettyp-Zeile läuft ohne Klammerzusatz" {
+    sed -i '/^# Pakettyp:/d' update_fastfetch.sh
+    run ./update_all.sh --only fastfetch 3>&-
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Führe aus: fastfetch"* ]]
+    [[ "$output" != *"Führe aus: fastfetch ("* ]]
+}
+
+@test "jedes update_*.sh nennt seinen Pakettyp (RPM oder Flatpak)" {
+    local f
+    for f in update_*.sh; do
+        [ "$f" == "update_all.sh" ] && continue
+        grep -Eq '^# Pakettyp: (RPM|Flatpak)$' "$f" || { echo "fehlt: $f"; return 1; }
+    done
+}
+
 @test "update_fastfetch.sh: neue Version wird installiert, alte Kopie entfernt" {
     FF_REMOTE=2.71.0 run ./update_fastfetch.sh
     [ "$status" -eq 0 ]

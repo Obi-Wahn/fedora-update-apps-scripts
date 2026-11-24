@@ -1,4 +1,5 @@
 #!/bin/bash
+# Pakettyp: Flatpak
 
 # Striktes Fehlermanagement
 set -Eeuo pipefail

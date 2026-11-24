@@ -1,4 +1,5 @@
 #!/bin/bash
+# Pakettyp: RPM
 
 # Striktes Fehlermanagement aktivieren
 set -Eeuo pipefail
