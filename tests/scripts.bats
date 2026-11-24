@@ -163,11 +163,41 @@ setup() {
     [ "$(cat .generalsxzh-installed-version)" = "1.0.5" ]
 }
 
-@test "Flatpak: Installation läuft ohne sudo (polkit), damit keine XDG_DATA_DIRS-Warnung von root kommt" {
-    GX_REMOTE=1.0.5 run ./update_generalsx.sh
+@test "Flatpak: Installation läuft per sudo mit XDG_DATA_DIRS des Nutzers (kein polkit, keine Warnung)" {
+    XDG_DATA_DIRS=/home/u/.local/share/flatpak/exports/share:/usr/share \
+        GX_REMOTE=1.0.5 run ./update_generalsx.sh
     [ "$status" -eq 0 ]
-    [ "$(mock_calls '^flatpak install --system')" -eq 1 ]
-    [ "$(mock_calls '^sudo flatpak install')" -eq 0 ]
+    [ "$(mock_calls '^sudo env XDG_DATA_DIRS=')" -eq 1 ]
+    [ "$(mock_calls '^flatpak-env XDG_DATA_DIRS=/home/u/.local/share/flatpak/exports/share:/usr/share:/var/lib/flatpak/exports/share$')" -eq 1 ]
+}
+
+@test "Flatpak: leeres XDG_DATA_DIRS wird mit Standardpfaden und Flatpak-Pfad ersetzt" {
+    XDG_DATA_DIRS= GX_REMOTE=1.0.5 run ./update_generalsx.sh
+    [ "$status" -eq 0 ]
+    [ "$(mock_calls '^flatpak-env XDG_DATA_DIRS=/usr/local/share:/usr/share:/var/lib/flatpak/exports/share$')" -eq 1 ]
+}
+
+@test "Flatpak: Install-Fehler bei weiterhin alter Version wird als Fehlschlag gemeldet" {
+    FLATPAK_FAIL=1 FLATPAK_VERSION=4.5.6 PR_REMOTE=4.5.7 run ./update_processing.sh
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"flatpak install fehlgeschlagen"* ]]
+    [[ "$output" == *"Installiert ist weiterhin: 4.5.6"* ]]
+    [[ "$output" != *"erfolgreich abgeschlossen"* ]]
+    [ "$(cat .processing-installed-version)" = "4.5.6" ]
+}
+
+@test "Flatpak: Install-Fehler ohne erkennbare Version wird als Fehlschlag gemeldet" {
+    FLATPAK_FAIL=1 PR_REMOTE=4.5.7 run ./update_processing.sh
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Installiert ist weiterhin: unbekannte Version"* ]]
+    [ "$(cat .processing-installed-version)" = "4.5.6" ]
+}
+
+@test "Flatpak: Install-Fehler, aber Zielversion installiert, gilt als Erfolg" {
+    FLATPAK_FAIL=1 FLATPAK_VERSION=4.5.7 PR_REMOTE=4.5.7 run ./update_processing.sh
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"bereits in der Zielversion 4.5.7 installiert"* ]]
+    [ "$(cat .processing-installed-version)" = "4.5.7" ]
 }
 
 @test "Talk: Marker aktuell, App aber deinstalliert, wird neu installiert" {
